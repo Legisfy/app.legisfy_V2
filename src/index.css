@@ -1,0 +1,347 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+All colors MUST be HSL.
+*/
+
+@layer base {
+  :root {
+    --background: 210 15% 94%;
+    --beige-bg: 39 12% 89%;
+    /* #e8e6e1 approximate HSL */
+    --foreground: 222.2 84% 4.9%;
+
+    --card: 0 0% 99%;
+    --card-foreground: 222.2 84% 4.9%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+
+    --primary: 221 83% 53%;
+    --primary-foreground: 0 0% 100%;
+    --primary-light: 221 83% 95%;
+
+    --legisfy-blue: 221 83% 53%;
+    --legisfy-blue-dark: 213 93% 40%;
+    --gradient-legisfy: linear-gradient(90deg, hsl(221, 83%, 53%) 0%, hsl(213, 93%, 40%) 100%);
+    --auth-primary: 221 83% 53%;
+    --auth-secondary: 213 93% 40%;
+    --auth-primary-foreground: 0 0% 100%;
+
+    /* Legisfy Brand Colors */
+    --legisfy-purple: 262 100% 58%;
+    --legisfy-magenta: 324 100% 51%;
+    --legisfy-orange: 14 100% 59%;
+
+    /* Premium Gradients - Ticto Style */
+    --gradient-premium: linear-gradient(135deg, hsl(29, 100%, 50%) 0%, hsl(346, 100%, 59%) 35%, hsl(291, 64%, 42%) 70%, hsl(265, 100%, 50%) 100%);
+    --gradient-premium-hover: linear-gradient(135deg, hsl(29, 100%, 55%) 0%, hsl(346, 100%, 64%) 35%, hsl(291, 64%, 47%) 70%, hsl(265, 100%, 55%) 100%);
+    --gradient-metallic: linear-gradient(135deg, hsl(210, 20%, 94%) 0%, hsl(0, 0%, 100%) 25%, hsl(210, 10%, 88%) 50%, hsl(210, 15%, 98%) 75%, hsl(210, 5%, 75%) 100%);
+
+    /* Legacy Gradients */
+    --legisfy-gradient: linear-gradient(90deg, #7B2FF7 0%, #F107A3 50%, #FF6B35 100%);
+    --legisfy-onboarding: linear-gradient(135deg, #FF6B35 0%, #F107A3 100%);
+
+    /* Glass Effect */
+    --glass-bg: rgba(255, 255, 255, 0.7);
+    --glass-border: rgba(0, 0, 0, 0.05);
+    --glass-blur: blur(8px);
+
+    --clean-input-bg: 0 0% 98%;
+    --clean-input-border: 214.3 31.8% 91.4%;
+    --clean-input-focus: 221 83% 53%;
+
+    --success: 142 76% 36%;
+    --success-foreground: 0 0% 100%;
+    --success-light: 142 76% 90%;
+    --success-hover: 142 76% 32%;
+
+    --info: 221 83% 53%;
+    --info-foreground: 0 0% 100%;
+
+    --violet: 262 83% 58%;
+    --violet-foreground: 0 0% 100%;
+
+    --purple: 262 83% 58%;
+    --purple-foreground: 0 0% 100%;
+
+    --orange: 25 95% 53%;
+    --orange-foreground: 0 0% 100%;
+
+    --blue: 217 91% 60%;
+    --blue-foreground: 0 0% 100%;
+
+    --green: 142 76% 36%;
+    --green-foreground: 0 0% 100%;
+
+    --warning: 45 93% 47%;
+    --warning-foreground: 0 0% 100%;
+    --warning-light: 45 93% 95%;
+
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222.2 84% 4.9%;
+
+    --muted: 210 40% 96%;
+    --muted-foreground: 215.4 16.3% 35%;
+
+    --accent: 210 40% 96%;
+    --accent-foreground: 222.2 84% 4.9%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 214.3 31.8% 85%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 221 83% 53%;
+
+    --radius: 0.75rem;
+
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 222.2 84% 4.9%;
+    --sidebar-primary: 221 83% 53%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 210 40% 96%;
+    --sidebar-accent-foreground: 222.2 84% 4.9%;
+    --sidebar-border: 214.3 31.8% 91.4%;
+    --sidebar-ring: 221 83% 53%;
+  }
+
+  .compact-card {
+    @apply p-3;
+  }
+
+  .compact-card .card-header {
+    @apply pb-1;
+  }
+
+  .compact-card .card-content {
+    @apply pt-1;
+  }
+
+  .dark {
+    --background: 240 6% 6%;
+    --foreground: 0 0% 98%;
+
+    --card: 240 6% 8%;
+    --card-foreground: 0 0% 98%;
+
+    --popover: 240 6% 8%;
+    --popover-foreground: 0 0% 98%;
+
+    --primary: 221 83% 53%;
+    --primary-foreground: 0 0% 100%;
+    --primary-light: 240 6% 12%;
+
+    --legisfy-blue: 221 83% 53%;
+    --legisfy-blue-dark: 213 93% 40%;
+    --gradient-legisfy: linear-gradient(90deg, hsl(221, 83%, 53%) 0%, hsl(213, 93%, 40%) 100%);
+    --auth-primary: 221 83% 53%;
+    --auth-secondary: 213 93% 40%;
+    --auth-primary-foreground: 0 0% 100%;
+
+    /* Legisfy Brand Colors */
+    --legisfy-purple: 262 100% 58%;
+    --legisfy-magenta: 324 100% 51%;
+    --legisfy-orange: 14 100% 59%;
+
+    /* Premium Gradients - Ticto Style */
+    --gradient-premium: linear-gradient(135deg, hsl(29, 100%, 50%) 0%, hsl(346, 100%, 59%) 35%, hsl(291, 64%, 42%) 70%, hsl(265, 100%, 50%) 100%);
+    --gradient-premium-hover: linear-gradient(135deg, hsl(29, 100%, 55%) 0%, hsl(346, 100%, 64%) 35%, hsl(291, 64%, 47%) 70%, hsl(265, 100%, 55%) 100%);
+    --gradient-metallic: linear-gradient(135deg, hsl(210, 20%, 94%) 0%, hsl(0, 0%, 100%) 25%, hsl(210, 10%, 88%) 50%, hsl(210, 15%, 98%) 75%, hsl(210, 5%, 75%) 100%);
+
+    /* Legacy Gradients */
+    --legisfy-gradient: linear-gradient(90deg, #7B2FF7 0%, #F107A3 50%, #FF6B35 100%);
+    --legisfy-onboarding: linear-gradient(135deg, #FF6B35 0%, #F107A3 100%);
+
+    /* Glass Effect - Dark Mode */
+    --glass-bg: rgba(0, 0, 0, 0.2);
+    --glass-border: rgba(255, 255, 255, 0.1);
+    --glass-blur: blur(10px);
+
+    --clean-input-bg: 240 6% 15%;
+    --clean-input-border: 240 6% 20%;
+    --clean-input-focus: 221 83% 53%;
+
+    --success: 142 76% 36%;
+    --success-foreground: 0 0% 100%;
+    --success-light: 142 76% 90%;
+    --success-hover: 142 76% 32%;
+
+    --info: 221 83% 53%;
+    --info-foreground: 0 0% 100%;
+
+    --violet: 262 83% 58%;
+    --violet-foreground: 0 0% 100%;
+
+    --orange: 25 95% 53%;
+    --orange-foreground: 0 0% 100%;
+
+    --warning: 45 93% 47%;
+    --warning-foreground: 0 0% 100%;
+    --warning-light: 45 93% 95%;
+
+    --secondary: 240 6% 12%;
+    --secondary-foreground: 0 0% 98%;
+
+    --muted: 240 6% 12%;
+    --muted-foreground: 240 5% 64.9%;
+
+    --accent: 240 6% 12%;
+    --accent-foreground: 0 0% 98%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 240 6% 15%;
+    --input: 240 6% 15%;
+    --ring: 221 83% 53%;
+
+    --sidebar-background: 240 6% 8%;
+    --sidebar-foreground: 0 0% 98%;
+    --sidebar-primary: 221 83% 53%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 6% 12%;
+    --sidebar-accent-foreground: 0 0% 98%;
+    --sidebar-border: 240 6% 15%;
+    --sidebar-ring: 221 83% 53%;
+  }
+
+  /* Custom scrollbar styles - clean and minimal */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--border));
+    border-radius: 3px;
+    transition: all 0.2s ease;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground) / 0.3);
+  }
+
+  /* For dark mode */
+  .dark ::-webkit-scrollbar-thumb {
+    background: hsl(var(--border));
+  }
+
+  .dark ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground) / 0.4);
+  }
+
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .hide-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  /* Firefox scrollbar */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--border)) transparent;
+    font-family: 'Inter', sans-serif;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  .font-outfit {
+    font-family: 'Outfit', sans-serif;
+  }
+
+  /* Metallic Style Classes */
+  .bg-metallic {
+    background: var(--gradient-metallic);
+    background-size: 200% 200%;
+    animation: metallic-shine 3s linear infinite;
+  }
+
+  .text-metallic {
+    background: var(--gradient-metallic);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-size: 200% 200%;
+    animation: metallic-shine 3s linear infinite;
+  }
+
+  @keyframes metallic-shine {
+    0% {
+      background-position: 0% 50%;
+    }
+
+    50% {
+      background-position: 100% 50%;
+    }
+
+    100% {
+      background-position: 0% 50%;
+    }
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+
+  /* Remove outlines de inputs específicos quando em foco para manter estética limpa, 
+     mas preserva a capacidade do navegador de gerenciar o foco globalmente */
+  input:focus,
+  textarea:focus,
+  select:focus {
+    outline: 2px solid transparent !important;
+    outline-offset: 2px !important;
+    box-shadow: 0 0 0 2px hsl(var(--background)), 0 0 0 4px hsl(var(--ring)) !important;
+  }
+
+  /* Melhorias para dropdowns e selects */
+  [data-radix-select-content] {
+    background-color: white !important;
+    border: 1px solid hsl(var(--border)) !important;
+    box-shadow: 0 10px 25px -5px rgb(0 0 0 / 0.1), 0 10px 10px -5px rgb(0 0 0 / 0.04) !important;
+    z-index: 50 !important;
+    border-radius: 6px !important;
+  }
+
+  [data-radix-select-item] {
+    background-color: transparent !important;
+    color: hsl(var(--foreground)) !important;
+    padding: 8px 12px !important;
+    cursor: pointer !important;
+  }
+
+  [data-radix-select-item]:hover {
+    background-color: hsl(var(--accent)) !important;
+    color: hsl(var(--accent-foreground)) !important;
+  }
+
+  [data-radix-select-item][data-state="checked"] {
+    background-color: hsl(var(--primary)) !important;
+    color: hsl(var(--primary-foreground)) !important;
+  }
+
+  /* Melhorias para dialog/modal overlay */
+  [data-radix-dialog-overlay] {
+    z-index: 50 !important;
+  }
+
+  [data-radix-dialog-content] {
+    z-index: 51 !important;
+  }
+}

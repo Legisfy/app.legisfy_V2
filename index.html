@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Legisfy</title>
+    <link rel="icon" href="/lovable-uploads/6f27cec5-7806-4bc4-b2c5-797f4fa5a580.png" type="image/png">
+    <meta name="description" content="Plataforma de gestão política e comunicação com eleitores" />
+    <meta name="author" content="Legisfy" />
+
+    <meta property="og:title" content="Legisfy" />
+    <meta property="og:description" content="Plataforma de gestão política e comunicação com eleitores" />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="/lovable-uploads/6f27cec5-7806-4bc4-b2c5-797f4fa5a580.png" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:site" content="@legisfy" />
+    <meta name="twitter:image" content="/lovable-uploads/6f27cec5-7806-4bc4-b2c5-797f4fa5a580.png" />
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  </head>
+
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+    <script>
+      // Prevent flash of wrong theme
+      try {
+        const theme = localStorage.getItem('theme') || 
+                     (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+        document.documentElement.classList.toggle('dark', theme === 'dark');
+      } catch (e) {}
+    </script>
+  </body>
+</html>

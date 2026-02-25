@@ -1,0 +1,13 @@
+.git\
+node_modules\
+dist\
+.env
+push_error.txt
+last_push_error.txt
+force_push_error.txt
+push_final_v1.txt
+push_final_v2.txt
+push_final_v3.txt
+push_final_v4.txt
+secrets_found.txt
+LegisfyApp-main\
