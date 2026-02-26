@@ -4,7 +4,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 const FROM_EMAIL = Deno.env.get("FROM_EMAIL") || "time@legisfy.app.br";
-const APP_URL = "https://app.legisfy.app.br";
+const APP_URL = "https://legisfy.app.br";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

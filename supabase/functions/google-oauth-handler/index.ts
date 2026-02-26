@@ -65,7 +65,7 @@ serve(async (req) => {
             status: 302,
             headers: {
                 ...corsHeaders,
-                'Location': `https://app.legisfy.app.br/conectar-assessor?google=success`,
+                'Location': `https://legisfy.app.br/conectar-assessor?google=success`,
             },
         })
 
