@@ -30,7 +30,7 @@ export const useEmailInvitations = () => {
       // Get the current domain, preferring production for invites
       const currentDomain = window.location.hostname === 'localhost'
         ? window.location.origin
-        : 'https://legisfy.app.br';
+        : 'https://app.legisfy.app.br';
 
       console.log('🔗 Generating invite link with domain:', currentDomain);
 
