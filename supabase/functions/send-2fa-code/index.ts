@@ -26,19 +26,19 @@ async function getEmailTemplate(type: string, variables: Record<string, string>)
   try {
     console.log(`🔍 [getEmailTemplate] Iniciando busca para tipo: "${type}"`);
     console.log(`📊 [getEmailTemplate] Variáveis recebidas:`, JSON.stringify(Object.keys(variables)));
-    
+
     // Test connection and list all templates
     const { data: allTemplates, error: listError } = await supabase
       .from('email_templates')
       .select('id, type, name, is_active')
       .limit(10);
-    
+
     if (listError) {
       console.error(`❌ [getEmailTemplate] Erro ao listar templates:`, listError);
     } else {
       console.log(`📋 [getEmailTemplate] Templates disponíveis:`, JSON.stringify(allTemplates, null, 2));
     }
-    
+
     const { data: template, error } = await supabase
       .from('email_templates')
       .select('subject, html_content, name, type')
@@ -144,10 +144,10 @@ const handler = async (req: Request): Promise<Response> => {
     // Buscar informações do usuário e gabinete
     const { data: authUser } = await supabase.auth.admin.listUsers();
     const user = authUser?.users?.find(u => u.email?.toLowerCase() === email.toLowerCase());
-    
+
     let userName = 'Usuário';
     let gabineteName = '';
-    
+
     if (user) {
       // Buscar nome do perfil
       const { data: profile } = await supabase
@@ -155,18 +155,18 @@ const handler = async (req: Request): Promise<Response> => {
         .select('full_name')
         .eq('user_id', user.id)
         .single();
-      
+
       if (profile?.full_name) {
         userName = profile.full_name;
       }
-      
+
       // Buscar gabinete do usuário
       const { data: gabinete } = await supabase
         .from('gabinetes')
         .select('nome')
         .eq('politico_id', user.id)
         .single();
-      
+
       if (gabinete?.nome) {
         gabineteName = gabinete.nome;
       } else {
@@ -177,7 +177,7 @@ const handler = async (req: Request): Promise<Response> => {
           .eq('user_id', user.id)
           .limit(1)
           .single();
-        
+
         if (member && member.gabinetes) {
           gabineteName = (member.gabinetes as any).nome;
         }
@@ -186,7 +186,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Salvar código no banco com expiração de 5 minutos
     const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutos
-    
+
     const { error: dbError } = await supabase
       .from('two_factor_codes')
       .upsert({
@@ -207,11 +207,11 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // Buscar template de email
-    const loginLink = `${Deno.env.get('APP_BASE_URL') || 'https://legisfy.app.br'}/auth`;
-    
+    const loginLink = `${Deno.env.get('APP_BASE_URL') || 'https://app.legisfy.app.br'}/auth`;
+
     console.log('🔍 Código gerado antes do template:', code);
     console.log('📧 Buscando template 2fa_code');
-    
+
     const { subject, html } = await getEmailTemplate('2fa_code', {
       codigo: code,
       code: code,
@@ -221,7 +221,7 @@ const handler = async (req: Request): Promise<Response> => {
       expires_minutes: '5',
       link: loginLink
     });
-    
+
     console.log('✅ Template processado, HTML length:', html.length);
     console.log('🔍 Verificando se código aparece no HTML:', html.includes(code) ? 'SIM' : 'NÃO');
 
@@ -236,8 +236,8 @@ const handler = async (req: Request): Promise<Response> => {
     console.log("Email 2FA enviado:", emailResponse);
 
     return new Response(
-      JSON.stringify({ 
-        success: true, 
+      JSON.stringify({
+        success: true,
         message: "Código de autenticação enviado para seu email",
         expires_in: 300 // 5 minutos em segundos
       }),

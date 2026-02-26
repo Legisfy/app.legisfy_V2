@@ -112,7 +112,7 @@ serve(async (req) => {
             headers: {
               'Authorization': `Bearer ${openAIApiKey}`,
               'Content-Type': 'application/json',
-              'HTTP-Referer': 'https://legisfy.app.br',
+              'HTTP-Referer': 'https://app.legisfy.app.br',
               'X-Title': 'Legisfy Assessor IA'
             },
             body: JSON.stringify(payload)

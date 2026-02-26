@@ -525,7 +525,7 @@ Responda APENAS com o JSON válido, sem explicações.`
       headers: {
         'Authorization': `Bearer ${OPENAI_API_KEY}`,
         'Content-Type': 'application/json',
-        'HTTP-Referer': 'https://legisfy.app.br',
+        'HTTP-Referer': 'https://app.legisfy.app.br',
         'X-Title': 'Legisfy Assessor IA'
       },
       body: JSON.stringify({
