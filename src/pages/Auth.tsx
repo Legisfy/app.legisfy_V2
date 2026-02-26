@@ -66,7 +66,7 @@ const Auth = () => {
       const { error } = await supabase.auth.signInWithOtp({
         email: formData.email,
         options: {
-          emailRedirectTo: `${window.location.origin}/dashboard`,
+          emailRedirectTo: `${window.location.hostname === 'localhost' ? window.location.origin : 'https://app.legisfy.app.br'}/dashboard`,
           captchaToken: captchaToken
         }
       });

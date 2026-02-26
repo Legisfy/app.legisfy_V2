@@ -27,7 +27,10 @@ export const useEmailInvitations = () => {
   const generateInviteLink = async (params: CreateInvitationParams & { invitation_id?: string }) => {
     try {
       // Get the current domain from window location
-      const currentDomain = window.location.origin;
+      // Get the current domain, preferring production for invites
+      const currentDomain = window.location.hostname === 'localhost'
+        ? window.location.origin
+        : 'https://app.legisfy.app.br';
 
       console.log('🔗 Generating invite link with domain:', currentDomain);
 
@@ -55,7 +58,9 @@ export const useEmailInvitations = () => {
       console.error('Erro ao gerar link:', error);
       // Fallback: usar o token correto com domínio atual
       const token = params.invitation_id || crypto.randomUUID();
-      const currentDomain = window.location.origin;
+      const currentDomain = window.location.hostname === 'localhost'
+        ? window.location.origin
+        : 'https://app.legisfy.app.br';
 
       const fallbackLink = params.role === 'politico'
         ? `${currentDomain}/onboarding?token=${token}`

@@ -43,10 +43,10 @@ export async function autorizarPolitico(input: AutorizarPoliticoInput) {
 
     console.log("✅ RPC retornou:", inviteResp);
     console.log("✅ Tipo do retorno:", typeof inviteResp);
-    
+
     // A RPC retorna JSONB que pode vir como string ou objeto
     let responseData: { success?: boolean; token?: string; invitation_id?: string };
-    
+
     if (typeof inviteResp === 'string') {
       responseData = JSON.parse(inviteResp);
     } else if (inviteResp && typeof inviteResp === 'object') {
@@ -55,20 +55,24 @@ export async function autorizarPolitico(input: AutorizarPoliticoInput) {
       console.error("❌ Formato de resposta inválido:", inviteResp);
       throw new Error("Formato de resposta da RPC inválido");
     }
-    
+
     const token = responseData?.token;
     console.log("🔑 Token extraído:", token);
     console.log("🔍 Response data completo:", JSON.stringify(responseData));
-    
+
     if (!token) {
       console.error("❌ Token não encontrado na resposta da RPC:", inviteResp);
       throw new Error("Falha ao gerar token de convite");
     }
-    
+
     // Construir URL de aceite do convite - sempre usar /onboarding no domínio principal
-    const baseUrl = window.location.hostname.includes('admin.') 
-      ? window.location.origin.replace('admin.', '')
-      : window.location.origin;
+    let baseUrl = window.location.hostname === 'localhost'
+      ? window.location.origin
+      : 'https://app.legisfy.app.br';
+
+    if (window.location.hostname.includes('admin.') && window.location.hostname !== 'localhost') {
+      baseUrl = 'https://app.legisfy.app.br';
+    }
     const acceptUrl = `${baseUrl}/onboarding?token=${token}`;
     console.log("🔗 URL de aceite gerada:", acceptUrl);
 
@@ -91,7 +95,7 @@ export async function autorizarPolitico(input: AutorizarPoliticoInput) {
         console.error('Email sending failed:', emailError);
         throw new Error(`Falha ao enviar email: ${emailError.message}`);
       }
-      
+
       console.log("✅ Email enviado com sucesso:", emailResult);
     } catch (err: any) {
       const msg = err?.message || "Falha ao enviar convite.";
