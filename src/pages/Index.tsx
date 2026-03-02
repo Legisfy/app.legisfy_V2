@@ -16,6 +16,8 @@ import { EnhancedVoterModal } from "@/components/modals/EnhancedVoterModal";
 import { NewIndicationModal } from "@/components/modals/MultiStepIndicationModal";
 import { NewDemandModal } from "@/components/modals/MultiStepDemandModal";
 import { NewIdeaModal } from "@/components/modals/MultiStepIdeaModal";
+import { PlanLimitModal } from "@/components/shared/PlanLimitModal";
+import { usePlanLimits } from "@/hooks/usePlanLimits";
 import { PromotionalBanner } from "@/components/ui/promotional-banner";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useGabineteData } from "@/hooks/useGabineteData";
@@ -65,6 +67,22 @@ const Index = () => {
   const [newIndicationOpen, setNewIndicationOpen] = useState(false);
   const [newDemandOpen, setNewDemandOpen] = useState(false);
   const [newIdeaOpen, setNewIdeaOpen] = useState(false);
+  const [limitModal, setLimitModal] = useState<{ open: boolean; resource: string; usage: number; max: number } | null>(null);
+  const { limits, usage, canCreate } = usePlanLimits();
+
+  const openWithLimit = (resource: 'eleitores' | 'demandas' | 'indicacoes' | 'ideias', openFn: () => void) => {
+    if (!canCreate(resource)) {
+      const limitKey = `max_${resource}` as keyof typeof limits;
+      setLimitModal({
+        open: true,
+        resource,
+        usage: usage[resource],
+        max: limits ? (limits[limitKey] as number) : 0,
+      });
+      return;
+    }
+    openFn();
+  };
 
   const [comunicados, setComunicados] = useState<Comunicado[]>([]);
   const [popupComunicado, setPopupComunicado] = useState<Comunicado | null>(null);
@@ -430,7 +448,7 @@ const Index = () => {
 
           <div className="flex items-center gap-1.5 overflow-x-auto hide-scrollbar">
             <Button
-              onClick={() => setNewVoterOpen(true)}
+              onClick={() => openWithLimit('eleitores', () => setNewVoterOpen(true))}
               variant="ghost"
               size="sm"
               className="h-8 px-3 text-[9px] font-bold uppercase tracking-widest text-muted-foreground hover:text-emerald-500 hover:bg-emerald-500/5 gap-2"
@@ -439,7 +457,7 @@ const Index = () => {
               Eleitor
             </Button>
             <Button
-              onClick={() => setNewIndicationOpen(true)}
+              onClick={() => openWithLimit('indicacoes', () => setNewIndicationOpen(true))}
               variant="ghost"
               size="sm"
               className="h-8 px-3 text-[9px] font-bold uppercase tracking-widest text-muted-foreground hover:text-blue-500 hover:bg-blue-500/5 gap-2"
@@ -448,7 +466,7 @@ const Index = () => {
               Indicação
             </Button>
             <Button
-              onClick={() => setNewDemandOpen(true)}
+              onClick={() => openWithLimit('demandas', () => setNewDemandOpen(true))}
               variant="ghost"
               size="sm"
               className="h-8 px-3 text-[9px] font-bold uppercase tracking-widest text-muted-foreground hover:text-purple-500 hover:bg-purple-500/5 gap-2"
@@ -457,7 +475,7 @@ const Index = () => {
               Demanda
             </Button>
             <Button
-              onClick={() => setNewIdeaOpen(true)}
+              onClick={() => openWithLimit('ideias', () => setNewIdeaOpen(true))}
               variant="ghost"
               size="sm"
               className="h-8 px-3 text-[9px] font-bold uppercase tracking-widest text-muted-foreground hover:text-amber-500 hover:bg-amber-500/5 gap-2"
@@ -702,6 +720,17 @@ const Index = () => {
           open={newIdeaOpen}
           onOpenChange={setNewIdeaOpen}
         />
+        {limitModal && (
+          <PlanLimitModal
+            open={limitModal.open}
+            onOpenChange={(open) => !open && setLimitModal(null)}
+            resource={limitModal.resource}
+            currentUsage={limitModal.usage}
+            maxLimit={limitModal.max}
+            planName={limits?.plan_name}
+          />
+        )}
+
 
 
         {/* Popup Modal para comunicados tipo "popup" */}

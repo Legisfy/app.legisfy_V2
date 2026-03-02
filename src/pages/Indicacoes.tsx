@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { AppLayout } from "@/components/layouts/AppLayout";
 import { NewIndicationModal } from "@/components/modals/MultiStepIndicationModal";
+import { PlanLimitModal } from "@/components/shared/PlanLimitModal";
+import { usePlanLimits } from "@/hooks/usePlanLimits";
 import { FormalizarIndicacaoModal } from "@/components/modals/FormalizarIndicacaoModal";
 import { ProtocolarIndicacaoModal } from "@/components/modals/ProtocolarIndicacaoModal";
 import { IndicacoesFilters } from "@/components/indicacoes/IndicacoesFilters";
@@ -77,8 +79,15 @@ export default function Indicacoes() {
   const { cabinet } = useAuthContext();
   const { toast } = useToast();
   const { hasPermission } = usePermissions();
+  const { limits, usage, canCreate } = usePlanLimits();
   const [activeTab, setActiveTab] = useState("tabela");
   const [isNewIndicationModalOpen, setIsNewIndicationModalOpen] = useState(false);
+  const [limitModalOpen, setLimitModalOpen] = useState(false);
+
+  const handleNovaIndicacao = () => {
+    if (!canCreate('indicacoes')) { setLimitModalOpen(true); return; }
+    setIsNewIndicationModalOpen(true);
+  };
   const [selectedIndicacao, setSelectedIndicacao] = useState<any>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isFormalizarModalOpen, setIsFormalizarModalOpen] = useState(false);
@@ -318,7 +327,7 @@ export default function Indicacoes() {
 
               {hasPermission('indicacoes', 'write') ? (
                 <Button
-                  onClick={() => setIsNewIndicationModalOpen(true)}
+                  onClick={handleNovaIndicacao}
                   variant="success"
                   className="h-10 px-4 gap-2 rounded-xl font-bold text-xs uppercase tracking-wider shadow-lg shadow-emerald-500/10 hover:shadow-emerald-500/20 transition-all active:scale-95"
                 >
@@ -382,6 +391,14 @@ export default function Indicacoes() {
             open={isNewIndicationModalOpen}
             onOpenChange={setIsNewIndicationModalOpen}
             createIndicacao={createIndicacao}
+          />
+          <PlanLimitModal
+            open={limitModalOpen}
+            onOpenChange={setLimitModalOpen}
+            resource="indicacoes"
+            currentUsage={usage.indicacoes}
+            maxLimit={limits?.max_indicacoes ?? 0}
+            planName={limits?.plan_name}
           />
 
           {/* Modal Formalizar */}

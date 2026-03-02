@@ -9,6 +9,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { EnhancedVoterModal } from "@/components/modals/EnhancedVoterModal";
+import { PlanLimitModal } from "@/components/shared/PlanLimitModal";
+import { usePlanLimits } from "@/hooks/usePlanLimits";
 import { ViewEleitorModal } from "@/components/modals/ViewEleitorModal";
 import { EditEleitorModal } from "@/components/modals/EditEleitorModal";
 import { EleitoresMap } from "@/components/maps/EleitoresMap";
@@ -93,6 +95,16 @@ export default function Eleitores() {
   const [selectedPublico, setSelectedPublico] = useState("Público");
   const [publicos, setPublicos] = useState<any[]>([]);
   const [showNewVoterModal, setShowNewVoterModal] = useState(false);
+  const [limitModal, setLimitModal] = useState(false);
+  const { limits, usage, canCreate } = usePlanLimits();
+
+  const handleNovoEleitor = () => {
+    if (!canCreate('eleitores')) {
+      setLimitModal(true);
+      return;
+    }
+    setShowNewVoterModal(true);
+  };
   const [selectedEleitor, setSelectedEleitor] = useState<any>(null);
   const [showViewModal, setShowViewModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -289,7 +301,7 @@ export default function Eleitores() {
 
               {hasPermission('eleitores', 'write') && (
                 <Button
-                  onClick={() => setShowNewVoterModal(true)}
+                  onClick={handleNovoEleitor}
                   variant="success"
                   className="h-10 px-4 gap-2 rounded-xl font-bold text-xs uppercase tracking-wider shadow-lg shadow-emerald-500/10 hover:shadow-emerald-500/20 transition-all active:scale-95"
                 >
@@ -630,6 +642,14 @@ export default function Eleitores() {
           <EnhancedVoterModal
             open={showNewVoterModal}
             onOpenChange={setShowNewVoterModal}
+          />
+          <PlanLimitModal
+            open={limitModal}
+            onOpenChange={setLimitModal}
+            resource="eleitores"
+            currentUsage={usage.eleitores}
+            maxLimit={limits?.max_eleitores ?? 0}
+            planName={limits?.plan_name}
           />
 
           <ViewEleitorModal

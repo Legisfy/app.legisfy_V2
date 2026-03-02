@@ -11,6 +11,8 @@ import { NewDemandModal } from "@/components/modals/MultiStepDemandModal";
 import { UpdatedViewDemandaModal } from "@/components/modals/UpdatedViewDemandaModal";
 import { DemandasKanban } from "@/components/demandas/DemandasKanban";
 import { AddDemandaUpdateModal } from "@/components/modals/AddDemandaUpdateModal";
+import { PlanLimitModal } from "@/components/shared/PlanLimitModal";
+import { usePlanLimits } from "@/hooks/usePlanLimits";
 import { Plus, Users, Clock, CheckCircle, AlertCircle, BarChart3, Kanban } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useRealDemandas } from "@/hooks/useRealDemandas";
@@ -21,8 +23,15 @@ export default function Demandas() {
   const { toast } = useToast();
   const { demandas, loading, createDemanda, updateDemanda, deleteDemanda, fetchDemandas } = useRealDemandas();
   const { hasPermission } = usePermissions();
+  const { limits, usage, canCreate } = usePlanLimits();
   const [isNewDemandaModalOpen, setIsNewDemandaModalOpen] = useState(false);
+  const [limitModalOpen, setLimitModalOpen] = useState(false);
   const [selectedDemanda, setSelectedDemanda] = useState<any>(null);
+
+  const handleNovaDemanda = () => {
+    if (!canCreate('demandas')) { setLimitModalOpen(true); return; }
+    setIsNewDemandaModalOpen(true);
+  };
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
   const [selectedDemandaForUpdate, setSelectedDemandaForUpdate] = useState<any>(null);
@@ -229,7 +238,7 @@ export default function Demandas() {
                 <div className="flex items-center gap-2">
                   {hasPermission('demandas', 'write') ? (
                     <Button
-                      onClick={() => setIsNewDemandaModalOpen(true)}
+                      onClick={handleNovaDemanda}
                       variant="success"
                       className="h-10 px-4 gap-2 rounded-xl font-bold text-xs uppercase tracking-wider shadow-lg shadow-emerald-500/10 hover:shadow-emerald-500/20 transition-all active:scale-95"
                     >
@@ -367,6 +376,14 @@ export default function Demandas() {
           <NewDemandModal
             open={isNewDemandaModalOpen}
             onOpenChange={setIsNewDemandaModalOpen}
+          />
+          <PlanLimitModal
+            open={limitModalOpen}
+            onOpenChange={setLimitModalOpen}
+            resource="demandas"
+            currentUsage={usage.demandas}
+            maxLimit={limits?.max_demandas ?? 0}
+            planName={limits?.plan_name}
           />
 
           <UpdatedViewDemandaModal
