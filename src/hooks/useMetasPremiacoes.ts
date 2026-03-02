@@ -12,6 +12,7 @@ export interface Meta {
   premio: string;
   progresso?: number;
   gabinete_id: string;
+  membro_id?: string | null;
   created_at?: string;
   updated_at?: string;
 }
@@ -68,34 +69,27 @@ export const useMetasPremiacoes = () => {
           try {
             switch (meta.tipo as Meta['tipo']) {
               case 'eleitores':
-                const { count: eleitoresCount } = await supabase
-                  .from('eleitores')
-                  .select('id', { count: 'exact' })
-                  .eq('gabinete_id', activeInstitution.cabinet_id);
+                let queryEleitores = supabase.from('eleitores').select('id', { count: 'exact' }).eq('gabinete_id', activeInstitution.cabinet_id);
+                if (meta.membro_id) queryEleitores = queryEleitores.eq('user_id', meta.membro_id);
+                const { count: eleitoresCount } = await queryEleitores;
                 progresso = eleitoresCount || 0;
                 break;
               case 'demandas':
-                const { count: demandasCount } = await supabase
-                  .from('demandas')
-                  .select('id', { count: 'exact' })
-                  .eq('gabinete_id', activeInstitution.cabinet_id)
-                  .eq('status', 'resolvida');
+                let queryDemandas = supabase.from('demandas').select('id', { count: 'exact' }).eq('gabinete_id', activeInstitution.cabinet_id).eq('status', 'resolvida');
+                if (meta.membro_id) queryDemandas = queryDemandas.eq('user_id', meta.membro_id);
+                const { count: demandasCount } = await queryDemandas;
                 progresso = demandasCount || 0;
                 break;
               case 'ideias':
-                const { count: ideiasCount } = await supabase
-                  .from('ideias')
-                  .select('id', { count: 'exact' })
-                  .eq('gabinete_id', activeInstitution.cabinet_id)
-                  .eq('status', 'aprovada');
+                let queryIdeias = supabase.from('ideias').select('id', { count: 'exact' }).eq('gabinete_id', activeInstitution.cabinet_id).eq('status', 'aprovada');
+                if (meta.membro_id) queryIdeias = queryIdeias.eq('user_id', meta.membro_id);
+                const { count: ideiasCount } = await queryIdeias;
                 progresso = ideiasCount || 0;
                 break;
               case 'indicacoes':
-                const { count: indicacoesCount } = await supabase
-                  .from('indicacoes')
-                  .select('id', { count: 'exact' })
-                  .eq('gabinete_id', activeInstitution.cabinet_id)
-                  .eq('status', 'atendida');
+                let queryIndicacoes = supabase.from('indicacoes').select('id', { count: 'exact' }).eq('gabinete_id', activeInstitution.cabinet_id).eq('status', 'atendida');
+                if (meta.membro_id) queryIndicacoes = queryIndicacoes.eq('user_id', meta.membro_id);
+                const { count: indicacoesCount } = await queryIndicacoes;
                 progresso = indicacoesCount || 0;
                 break;
             }

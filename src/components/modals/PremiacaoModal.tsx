@@ -6,16 +6,11 @@ import { Badge } from "@/components/ui/badge";
 import { Trophy, Target, Plus, Trash2, Sparkles, Star, Zap, Award, ChevronRight } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useMetasPremiacoes } from "@/hooks/useMetasPremiacoes";
+import { useAssessores } from "@/hooks/useAssessores";
 import { cn } from "@/lib/utils";
+import { User, Users as UsersIcon } from "lucide-react";
 
-interface Meta {
-  id: string;
-  nome: string;
-  descricao: string;
-  tipo: 'eleitores' | 'demandas' | 'ideias' | 'indicacoes';
-  meta: number;
-  premio: string;
-}
+import { Meta } from "@/hooks/useMetasPremiacoes";
 
 interface Pontuacao {
   acao: string;
@@ -31,6 +26,7 @@ const tipoConfig: Record<string, { label: string; color: string; bg: string; ico
 
 export function PremiacaoModal({ children }: { children: React.ReactNode }) {
   const { metas, pontuacoes, loading, salvarMeta, removerMeta, salvarPontuacoes, defaultPontuacoes } = useMetasPremiacoes();
+  const { assessores } = useAssessores();
 
   const predefinedActions = [
     'Eleitor cadastrado',
@@ -51,7 +47,8 @@ export function PremiacaoModal({ children }: { children: React.ReactNode }) {
     descricao: '',
     tipo: 'eleitores' as const,
     meta: 0,
-    premio: ''
+    premio: '',
+    membro_id: null as string | null
   });
 
   const [novaPontuacao, setNovaPontuacao] = useState({
@@ -76,7 +73,7 @@ export function PremiacaoModal({ children }: { children: React.ReactNode }) {
     }
     const success = await salvarMeta(novaMeta);
     if (success) {
-      setNovaMeta({ nome: '', descricao: '', tipo: 'eleitores', meta: 0, premio: '' });
+      setNovaMeta({ nome: '', descricao: '', tipo: 'eleitores', meta: 0, premio: '', membro_id: null });
     }
   };
 
@@ -297,6 +294,16 @@ export function PremiacaoModal({ children }: { children: React.ReactNode }) {
                       value={novaMeta.premio}
                       onChange={(e) => setNovaMeta({ ...novaMeta, premio: e.target.value })}
                     />
+                    <select
+                      className="h-9 px-3 text-xs border border-border/40 rounded-lg bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary/30 transition-all col-span-2"
+                      value={novaMeta.membro_id || ''}
+                      onChange={(e) => setNovaMeta({ ...novaMeta, membro_id: e.target.value || null })}
+                    >
+                      <option value="">Todo Gabinete</option>
+                      {assessores.map(assessor => (
+                        <option key={assessor.id} value={assessor.user_id}>{assessor.nome} ({assessor.cargo})</option>
+                      ))}
+                    </select>
                     <Button
                       onClick={adicionarMeta}
                       size="sm"
@@ -334,6 +341,13 @@ export function PremiacaoModal({ children }: { children: React.ReactNode }) {
                                   )}
                                 >
                                   {config.label}
+                                </Badge>
+                                <Badge
+                                  variant="secondary"
+                                  className="h-4 px-1.5 text-[7px] font-bold uppercase tracking-wider rounded-md bg-muted/30 text-muted-foreground shrink-0 flex items-center gap-1"
+                                >
+                                  {meta.membro_id ? <User className="h-2 w-2" /> : <UsersIcon className="h-2 w-2" />}
+                                  {meta.membro_id ? assessores.find(a => a.user_id === meta.membro_id)?.nome || 'Individual' : 'Gabinete'}
                                 </Badge>
                               </div>
                               <p className="text-[9px] text-muted-foreground/50 leading-relaxed">
