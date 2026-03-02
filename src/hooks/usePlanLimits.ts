@@ -11,6 +11,15 @@ export interface PlanLimits {
     monthly_price_cents: number;
     plan_name: string;
     plan_description: string;
+    plan_id: string;
+}
+
+export interface ContractInfo {
+    data_inicio: string | null;
+    data_vencimento: string | null;
+    recorrencia: string | null;
+    is_trial: boolean;
+    status: string | null;
 }
 
 export interface PlanUsage {
@@ -23,6 +32,7 @@ export interface PlanUsage {
 
 export interface PlanLimitsResult {
     limits: PlanLimits | null;
+    contract: ContractInfo | null;
     usage: PlanUsage;
     loading: boolean;
     usagePercent: (resource: keyof PlanUsage) => number;
@@ -44,6 +54,7 @@ const RESOURCE_TO_LIMIT: Record<keyof PlanUsage, keyof PlanLimits> = {
 export function usePlanLimits(): PlanLimitsResult {
     const { activeInstitution } = useActiveInstitution();
     const [limits, setLimits] = useState<PlanLimits | null>(null);
+    const [contract, setContract] = useState<ContractInfo | null>(null);
     const [usage, setUsage] = useState<PlanUsage>({
         users: 0, eleitores: 0, demandas: 0, indicacoes: 0, ideias: 0,
     });
@@ -51,44 +62,52 @@ export function usePlanLimits(): PlanLimitsResult {
 
     const fetchData = useCallback(async () => {
         const cabinetId = activeInstitution?.cabinet_id;
-        if (!cabinetId) {
-            setLoading(false);
-            return;
-        }
+        if (!cabinetId) { setLoading(false); return; }
 
         try {
             setLoading(true);
-
-            // 1. Buscar contrato ativo do gabinete via cast para evitar erros de tipo gerado
             const db = supabase as any;
-            const { data: contract } = await db
+
+            // 1. Buscar contrato ativo
+            const { data: contractData } = await db
                 .from('contracts')
-                .select('plan_id, status')
+                .select('plan_id, status, data_inicio, data_vencimento, recorrencia, is_trial')
                 .eq('gabinete_id', cabinetId)
                 .eq('status', 'ativo')
                 .order('created_at', { ascending: false })
                 .limit(1)
                 .maybeSingle();
 
-            if (contract?.plan_id) {
-                // 2. Buscar detalhes do plano
-                const { data: plan } = await db
-                    .from('plans')
-                    .select('name, description, monthly_price_cents, max_users, max_eleitores, max_demandas, max_indicacoes, max_ideias')
-                    .eq('id', contract.plan_id)
-                    .single();
+            if (contractData) {
+                setContract({
+                    data_inicio: contractData.data_inicio,
+                    data_vencimento: contractData.data_vencimento,
+                    recorrencia: contractData.recorrencia,
+                    is_trial: contractData.is_trial ?? false,
+                    status: contractData.status,
+                });
 
-                if (plan) {
-                    setLimits({
-                        plan_name: plan.name,
-                        plan_description: plan.description || '',
-                        monthly_price_cents: plan.monthly_price_cents ?? 0,
-                        max_users: plan.max_users ?? UNLIMITED,
-                        max_eleitores: plan.max_eleitores ?? UNLIMITED,
-                        max_demandas: plan.max_demandas ?? UNLIMITED,
-                        max_indicacoes: plan.max_indicacoes ?? UNLIMITED,
-                        max_ideias: plan.max_ideias ?? UNLIMITED,
-                    });
+                // 2. Buscar detalhes do plano
+                if (contractData.plan_id) {
+                    const { data: plan } = await db
+                        .from('plans')
+                        .select('id, name, description, monthly_price_cents, max_users, max_eleitores, max_demandas, max_indicacoes, max_ideias')
+                        .eq('id', contractData.plan_id)
+                        .single();
+
+                    if (plan) {
+                        setLimits({
+                            plan_id: plan.id,
+                            plan_name: plan.name,
+                            plan_description: plan.description || '',
+                            monthly_price_cents: plan.monthly_price_cents ?? 0,
+                            max_users: plan.max_users ?? UNLIMITED,
+                            max_eleitores: plan.max_eleitores ?? UNLIMITED,
+                            max_demandas: plan.max_demandas ?? UNLIMITED,
+                            max_indicacoes: plan.max_indicacoes ?? UNLIMITED,
+                            max_ideias: plan.max_ideias ?? UNLIMITED,
+                        });
+                    }
                 }
             }
 
@@ -101,14 +120,12 @@ export function usePlanLimits(): PlanLimitsResult {
                 db.rpc('get_gabinete_members_with_profiles', { gab_id: cabinetId }),
             ]);
 
-            const membersCount = Array.isArray(membersRes.data) ? membersRes.data.length : 0;
-
             setUsage({
                 eleitores: eleitoresRes.count ?? 0,
                 demandas: demandasRes.count ?? 0,
                 indicacoes: indicacoesRes.count ?? 0,
                 ideias: ideiasRes.count ?? 0,
-                users: membersCount,
+                users: Array.isArray(membersRes.data) ? membersRes.data.length : 0,
             });
         } catch (error) {
             console.error('[usePlanLimits] Error:', error);
@@ -117,24 +134,20 @@ export function usePlanLimits(): PlanLimitsResult {
         }
     }, [activeInstitution?.cabinet_id]);
 
-    useEffect(() => {
-        fetchData();
-    }, [fetchData]);
+    useEffect(() => { fetchData(); }, [fetchData]);
 
     const usagePercent = useCallback((resource: keyof PlanUsage): number => {
         if (!limits) return 0;
-        const limitKey = RESOURCE_TO_LIMIT[resource];
-        const max = limits[limitKey] as number;
-        if (max === UNLIMITED || max < 0) return -1;
+        const max = limits[RESOURCE_TO_LIMIT[resource]] as number;
+        if (max < 0) return -1;
         if (max === 0) return 100;
         return Math.min(100, Math.round((usage[resource] / max) * 100));
     }, [limits, usage]);
 
     const canCreate = useCallback((resource: keyof PlanUsage): boolean => {
         if (!limits) return true;
-        const limitKey = RESOURCE_TO_LIMIT[resource];
-        const max = limits[limitKey] as number;
-        if (max < 0) return true; // ilimitado
+        const max = limits[RESOURCE_TO_LIMIT[resource]] as number;
+        if (max < 0) return true;
         return usage[resource] < max;
     }, [limits, usage]);
 
@@ -143,5 +156,5 @@ export function usePlanLimits(): PlanLimitsResult {
         return pct !== -1 && pct >= 80;
     }, [usagePercent]);
 
-    return { limits, usage, loading, usagePercent, canCreate, isNearLimit, refetch: fetchData };
+    return { limits, contract, usage, loading, usagePercent, canCreate, isNearLimit, refetch: fetchData };
 }

@@ -1,20 +1,22 @@
-import { useState, useCallback } from "react";
+import { useState, useEffect } from "react";
 import {
     Crown, Calendar, CreditCard, History, AlertTriangle, CheckCircle,
     ChevronRight, Users, MessageCircle, FileSignature, FileText,
-    TrendingUp, Loader2, RefreshCw, X, Zap
+    TrendingUp, Loader2, RefreshCw, X, Zap, Check, Star,
+    CalendarDays, Repeat
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { useSubscription } from "@/hooks/useSubscription";
 import { usePlanLimits } from "@/hooks/usePlanLimits";
 import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { PaymentHistoryModal } from "@/components/assinatura/PaymentHistoryModal";
-import { CustomerPortalButton } from "@/components/stripe/CustomerPortalButton";
+import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 
 const LIMIT_META = [
@@ -24,9 +26,22 @@ const LIMIT_META = [
     { key: "ideias" as const, limitKey: "max_ideias", label: "Proj. de Lei", icon: FileText, color: "bg-amber-500", trackColor: "text-amber-500" },
 ];
 
+interface AvailablePlan {
+    id: string;
+    name: string;
+    description: string;
+    monthly_price_cents: number;
+    features: string[];
+    max_users: number;
+    max_eleitores: number;
+    max_demandas: number;
+    max_indicacoes: number;
+    max_ideias: number;
+}
+
 function UsageBar({ pct, color }: { pct: number; color: string }) {
     const isUnlimited = pct === -1;
-    const barColor = isUnlimited ? "bg-muted/30"
+    const barColor = isUnlimited ? "bg-muted/20"
         : pct >= 90 ? "bg-red-500"
             : pct >= 70 ? "bg-amber-500"
                 : color;
@@ -34,27 +49,184 @@ function UsageBar({ pct, color }: { pct: number; color: string }) {
         <div className="h-1 bg-muted/20 rounded-full overflow-hidden">
             <div
                 className={cn("h-full rounded-full transition-all", barColor)}
-                style={{ width: isUnlimited ? "30%" : `${pct}%`, opacity: isUnlimited ? 0.3 : 1 }}
+                style={{ width: isUnlimited ? "20%" : `${pct}%`, opacity: isUnlimited ? 0.3 : 1 }}
             />
         </div>
     );
 }
 
+function PlansModal({ open, onOpenChange, currentPlanId }: { open: boolean; onOpenChange: (v: boolean) => void; currentPlanId?: string }) {
+    const [plans, setPlans] = useState<AvailablePlan[]>([]);
+    const [loading, setLoading] = useState(true);
+    const navigate = useNavigate();
+
+    useEffect(() => {
+        if (!open) return;
+        const db = supabase as any;
+        db.from('plans')
+            .select('id, name, description, monthly_price_cents, features, max_users, max_eleitores, max_demandas, max_indicacoes, max_ideias')
+            .eq('is_active', true)
+            .order('monthly_price_cents')
+            .then(({ data }: any) => {
+                if (data) setPlans(data);
+                setLoading(false);
+            });
+    }, [open]);
+
+    const PLAN_ACCENT: Record<string, string> = {
+        Starter: "border-emerald-500/30 hover:border-emerald-500/60",
+        Pro: "border-blue-500/30 hover:border-blue-500/60",
+        Premium: "border-amber-500/30 hover:border-amber-500/60",
+    };
+    const PLAN_BADGE: Record<string, string> = {
+        Starter: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
+        Pro: "bg-blue-500/10 text-blue-400 border-blue-500/20",
+        Premium: "bg-amber-500/10 text-amber-400 border-amber-500/20",
+    };
+
+    return (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent className="max-w-2xl border border-border/40 bg-background dark:bg-card/95 backdrop-blur-sm">
+                <DialogHeader className="pb-2">
+                    <DialogTitle className="flex items-center gap-2 text-sm font-bold uppercase tracking-widest">
+                        <Crown className="h-4 w-4 text-primary opacity-60" />
+                        Planos Disponíveis
+                    </DialogTitle>
+                    <DialogDescription className="text-[10px] text-muted-foreground/50 uppercase tracking-widest">
+                        Escolha o plano ideal para o seu mandato
+                    </DialogDescription>
+                </DialogHeader>
+
+                {loading ? (
+                    <div className="flex items-center justify-center py-12 opacity-30">
+                        <Loader2 className="h-6 w-6 animate-spin" />
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-2">
+                        {plans.map((plan) => {
+                            const isCurrent = plan.id === currentPlanId;
+                            const accent = PLAN_ACCENT[plan.name] || "border-border/30 hover:border-border/60";
+                            const badge = PLAN_BADGE[plan.name] || "bg-muted/10 text-muted-foreground border-border/20";
+                            const price = plan.monthly_price_cents / 100;
+
+                            return (
+                                <div
+                                    key={plan.id}
+                                    className={cn(
+                                        "relative flex flex-col p-4 rounded-xl border transition-all",
+                                        accent,
+                                        isCurrent && "ring-1 ring-primary/30 bg-primary/2"
+                                    )}
+                                >
+                                    {isCurrent && (
+                                        <div className="absolute -top-2 left-3">
+                                            <Badge className="text-[8px] font-bold bg-primary/80 text-white border-0 h-4 px-1.5 uppercase tracking-widest">
+                                                Plano Atual
+                                            </Badge>
+                                        </div>
+                                    )}
+
+                                    <div className="space-y-2 flex-1">
+                                        <div className="flex items-center justify-between">
+                                            <p className="text-sm font-bold text-foreground">{plan.name}</p>
+                                            <Badge className={cn("text-[8px] font-bold border h-4 px-1.5 uppercase tracking-wider", badge)}>
+                                                {plan.name}
+                                            </Badge>
+                                        </div>
+
+                                        <div>
+                                            <span className="text-xl font-bold text-foreground">R$ {price.toFixed(2)}</span>
+                                            <span className="text-[9px] text-muted-foreground/50 ml-1 font-bold uppercase">/mês</span>
+                                        </div>
+
+                                        <p className="text-[10px] text-muted-foreground/60 leading-relaxed">{plan.description}</p>
+
+                                        <Separator className="opacity-20 my-2" />
+
+                                        {/* Limites */}
+                                        <div className="space-y-1">
+                                            {[
+                                                { label: "Usuários", value: plan.max_users },
+                                                { label: "Demandas", value: plan.max_demandas },
+                                                { label: "Indicações", value: plan.max_indicacoes },
+                                                { label: "Proj. de Lei", value: plan.max_ideias },
+                                            ].map(({ label, value }) => (
+                                                <div key={label} className="flex items-center justify-between text-[9px]">
+                                                    <span className="text-muted-foreground/50">{label}</span>
+                                                    <span className="font-bold text-foreground/70">{value < 0 ? "∞" : value}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+
+                                        {/* Features */}
+                                        {plan.features && plan.features.length > 0 && (
+                                            <div className="space-y-1 pt-1">
+                                                {plan.features.slice(0, 4).map((f: string) => (
+                                                    <div key={f} className="flex items-start gap-1.5 text-[9px] text-muted-foreground/60">
+                                                        <Check className="h-2.5 w-2.5 text-emerald-500 shrink-0 mt-0.5" />
+                                                        <span>{f}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <Button
+                                        size="sm"
+                                        variant={isCurrent ? "outline" : "default"}
+                                        disabled={isCurrent}
+                                        className={cn(
+                                            "w-full mt-3 h-8 text-[9px] font-bold uppercase tracking-widest",
+                                            !isCurrent && "bg-primary hover:bg-primary/90"
+                                        )}
+                                        onClick={() => {
+                                            onOpenChange(false);
+                                            navigate("/assinatura-stripe");
+                                        }}
+                                    >
+                                        {isCurrent ? "Plano Ativo" : "Quero esse Plano"}
+                                    </Button>
+                                </div>
+                            );
+                        })}
+                    </div>
+                )}
+            </DialogContent>
+        </Dialog>
+    );
+}
+
 export function GabineteAssinaturaCard() {
     const navigate = useNavigate();
-    const { subscribed, plan, subscription_end, loading: subLoading, error, refreshSubscription } = useSubscription();
-    const { limits, usage, usagePercent, loading: limitsLoading } = usePlanLimits();
+    const { subscribed, subscription_end, loading: subLoading, refreshSubscription } = useSubscription();
+    const { limits, contract, usage, usagePercent, loading: limitsLoading, refetch } = usePlanLimits();
     const [showHistory, setShowHistory] = useState(false);
+    const [showPlans, setShowPlans] = useState(false);
     const [cancelConfirm, setCancelConfirm] = useState(false);
 
-    const planName = limits?.plan_name || plan || "Plano Básico";
+    const planName = limits?.plan_name || "Plano Básico";
     const priceMonthly = limits ? limits.monthly_price_cents / 100 : 0;
     const description = limits?.plan_description;
-    const nextBillingDate = subscription_end ? new Date(subscription_end) : null;
-    const daysRemaining = nextBillingDate
-        ? Math.max(0, Math.ceil((nextBillingDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+
+    // Data de início vem do contrato
+    const dataInicio = contract?.data_inicio ? new Date(contract.data_inicio) : null;
+    const dataVencimento = contract?.data_vencimento
+        ? new Date(contract.data_vencimento)
+        : subscription_end ? new Date(subscription_end) : null;
+    const daysRemaining = dataVencimento
+        ? Math.max(0, Math.ceil((dataVencimento.getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
         : null;
 
+    const recorrenciaLabel: Record<string, string> = {
+        mensal: "Mensal",
+        anual: "Anual",
+        semestral: "Semestral",
+    };
+    const recorrencia = contract?.recorrencia
+        ? recorrenciaLabel[contract.recorrencia] || contract.recorrencia
+        : "Mensal";
+
+    const isAtivo = contract?.status === 'ativo' || subscribed;
     const isLoading = subLoading || limitsLoading;
 
     return (
@@ -69,13 +241,13 @@ export function GabineteAssinaturaCard() {
                         <div className="flex items-center gap-1.5">
                             <Badge className={cn(
                                 "text-[7px] font-bold tracking-widest uppercase px-1.5 h-4 border",
-                                subscribed
+                                isAtivo
                                     ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
                                     : "bg-orange-500/10 text-orange-400 border-orange-500/20"
                             )}>
-                                {subscribed ? "Ativo" : "Inativo"}
+                                {isAtivo ? "Ativo" : "Inativo"}
                             </Badge>
-                            <button onClick={refreshSubscription} className="opacity-30 hover:opacity-70 transition-opacity" title="Atualizar">
+                            <button onClick={() => { refreshSubscription(); refetch(); }} className="opacity-30 hover:opacity-70 transition-opacity" title="Atualizar">
                                 <RefreshCw className="h-3 w-3" />
                             </button>
                         </div>
@@ -94,38 +266,86 @@ export function GabineteAssinaturaCard() {
                                 <div className="space-y-1">
                                     <div className="flex items-center gap-2">
                                         <p className="text-base font-bold text-foreground">{planName}</p>
-                                        {subscribed && <CheckCircle className="h-3.5 w-3.5 text-emerald-500" />}
+                                        {isAtivo && <CheckCircle className="h-3.5 w-3.5 text-emerald-500" />}
+                                        {contract?.is_trial && (
+                                            <Badge className="text-[7px] bg-amber-500/10 text-amber-400 border-amber-500/20 h-4 px-1.5 uppercase tracking-widest">
+                                                Trial
+                                            </Badge>
+                                        )}
                                     </div>
                                     {description && (
                                         <p className="text-[11px] text-muted-foreground/60 leading-relaxed max-w-xs">{description}</p>
                                     )}
                                 </div>
                                 <div className="text-right shrink-0">
-                                    <p className="text-lg font-bold text-foreground">R$ {priceMonthly.toFixed(2)}</p>
+                                    <p className="text-xl font-bold text-foreground">R$ {priceMonthly.toFixed(2)}</p>
                                     <p className="text-[9px] text-muted-foreground/50 uppercase font-bold tracking-widest">por mês</p>
                                 </div>
                             </div>
 
                             <Separator className="opacity-20" />
 
-                            {/* Período de cobrança */}
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-0.5">
-                                    <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/40 flex items-center gap-1">
-                                        <Calendar className="h-2.5 w-2.5" />
-                                        Próxima Cobrança
+                            {/* Período e cobrança */}
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="space-y-1 bg-muted/10 rounded-lg px-2.5 py-2">
+                                    <p className="text-[8px] font-bold uppercase tracking-widest text-muted-foreground/40 flex items-center gap-1">
+                                        <CalendarDays className="h-2.5 w-2.5" />
+                                        Início do Plano
                                     </p>
                                     <p className="text-[11px] font-semibold text-foreground/80">
-                                        {nextBillingDate ? format(nextBillingDate, "d 'de' MMM 'de' yyyy", { locale: ptBR }) : "—"}
+                                        {dataInicio ? format(dataInicio, "dd/MM/yyyy") : "—"}
                                     </p>
                                 </div>
-                                <div className="space-y-0.5">
-                                    <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/40">Dias Restantes</p>
+                                <div className="space-y-1 bg-muted/10 rounded-lg px-2.5 py-2">
+                                    <p className="text-[8px] font-bold uppercase tracking-widest text-muted-foreground/40 flex items-center gap-1">
+                                        <Calendar className="h-2.5 w-2.5" />
+                                        Vencimento
+                                    </p>
                                     <p className="text-[11px] font-semibold text-foreground/80">
-                                        {daysRemaining !== null ? `${daysRemaining} dias` : "—"}
+                                        {dataVencimento ? format(dataVencimento, "dd/MM/yyyy") : "—"}
+                                    </p>
+                                </div>
+                                <div className="space-y-1 bg-muted/10 rounded-lg px-2.5 py-2">
+                                    <p className="text-[8px] font-bold uppercase tracking-widest text-muted-foreground/40 flex items-center gap-1">
+                                        <Repeat className="h-2.5 w-2.5" />
+                                        Recorrência
+                                    </p>
+                                    <p className="text-[11px] font-semibold text-foreground/80">{recorrencia}</p>
+                                </div>
+                                <div className="space-y-1 bg-muted/10 rounded-lg px-2.5 py-2">
+                                    <p className="text-[8px] font-bold uppercase tracking-widest text-muted-foreground/40 flex items-center gap-1">
+                                        <CreditCard className="h-2.5 w-2.5" />
+                                        Pagamento
+                                    </p>
+                                    <p className="text-[11px] font-semibold text-foreground/80">
+                                        {/* Método de pagamento - virá do Stripe no futuro; por ora exibe recorrência */}
+                                        Boleto / PIX
                                     </p>
                                 </div>
                             </div>
+
+                            <Separator className="opacity-20" />
+
+                            {/* Dias restantes */}
+                            {daysRemaining !== null && (
+                                <div className={cn(
+                                    "flex items-center justify-between px-3 py-2 rounded-lg",
+                                    daysRemaining <= 7 ? "bg-red-500/5 border border-red-500/20" :
+                                        daysRemaining <= 30 ? "bg-amber-500/5 border border-amber-500/20" :
+                                            "bg-muted/10 border border-border/20"
+                                )}>
+                                    <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/50">
+                                        Dias Restantes
+                                    </span>
+                                    <span className={cn(
+                                        "text-sm font-black",
+                                        daysRemaining <= 7 ? "text-red-400" :
+                                            daysRemaining <= 30 ? "text-amber-400" : "text-foreground/70"
+                                    )}>
+                                        {daysRemaining} dias
+                                    </span>
+                                </div>
+                            )}
 
                             <Separator className="opacity-20" />
 
@@ -167,6 +387,7 @@ export function GabineteAssinaturaCard() {
 
                             {/* Ações */}
                             <div className="space-y-2">
+                                {/* Histórico */}
                                 <button
                                     onClick={() => setShowHistory(true)}
                                     className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg bg-muted/20 border border-border/20 hover:bg-muted/40 transition-all group"
@@ -178,8 +399,9 @@ export function GabineteAssinaturaCard() {
                                     <ChevronRight className="h-3 w-3 text-muted-foreground/30 group-hover:text-muted-foreground/60 transition-colors" />
                                 </button>
 
+                                {/* Atualizar plano — abre modal */}
                                 <button
-                                    onClick={() => navigate("/assinatura-stripe")}
+                                    onClick={() => setShowPlans(true)}
                                     className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg bg-primary/5 border border-primary/20 hover:bg-primary/10 transition-all group"
                                 >
                                     <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-primary/70">
@@ -189,11 +411,7 @@ export function GabineteAssinaturaCard() {
                                     <ChevronRight className="h-3 w-3 text-primary/30 group-hover:text-primary/60 transition-colors" />
                                 </button>
 
-                                <CustomerPortalButton className="w-full h-8 text-[10px] font-bold uppercase tracking-widest bg-transparent border border-border/30 text-muted-foreground/60 hover:bg-muted/20 hover:text-muted-foreground rounded-lg transition-all flex items-center justify-center gap-2">
-                                    <CreditCard className="h-3 w-3" />
-                                    Gerenciar Pagamento
-                                </CustomerPortalButton>
-
+                                {/* Cancelar */}
                                 {!cancelConfirm ? (
                                     <button
                                         onClick={() => setCancelConfirm(true)}
@@ -203,29 +421,26 @@ export function GabineteAssinaturaCard() {
                                     </button>
                                 ) : (
                                     <div className="flex items-center gap-2 p-2.5 rounded-lg bg-destructive/5 border border-destructive/20">
-                                        <p className="text-[9px] text-destructive/70 font-bold flex-1">Confirmar cancelamento?</p>
-                                        <CustomerPortalButton className="h-6 px-2 text-[8px] bg-destructive/80 text-white hover:bg-destructive border-0 rounded font-bold uppercase tracking-wider">
-                                            Confirmar
-                                        </CustomerPortalButton>
+                                        <p className="text-[9px] text-destructive/70 font-bold flex-1">Deseja cancelar? Entre em contato com suporte.</p>
+                                        <a
+                                            href="mailto:suporte@legisfy.com"
+                                            className="h-6 px-2 text-[8px] bg-destructive/80 text-white hover:bg-destructive rounded font-bold uppercase tracking-wider flex items-center"
+                                        >
+                                            Contato
+                                        </a>
                                         <button onClick={() => setCancelConfirm(false)} className="text-muted-foreground/40 hover:text-muted-foreground transition-colors">
                                             <X className="h-3 w-3" />
                                         </button>
                                     </div>
                                 )}
                             </div>
-
-                            {error && (
-                                <div className="flex items-center gap-2 p-2 rounded-lg bg-orange-500/5 border border-orange-500/20">
-                                    <AlertTriangle className="h-3 w-3 text-orange-400 shrink-0" />
-                                    <p className="text-[9px] text-orange-400/80">Erro ao carregar dados de assinatura</p>
-                                </div>
-                            )}
                         </>
                     )}
                 </CardContent>
             </Card>
 
             <PaymentHistoryModal open={showHistory} onOpenChange={setShowHistory} />
+            <PlansModal open={showPlans} onOpenChange={setShowPlans} currentPlanId={limits?.plan_id} />
         </>
     );
 }
