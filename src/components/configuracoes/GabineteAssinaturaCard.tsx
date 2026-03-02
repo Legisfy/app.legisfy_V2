@@ -318,9 +318,9 @@ export function GabineteAssinaturaCard() {
                                         Pagamento
                                     </p>
                                     <p className="text-[11px] font-semibold text-foreground/80">
-                                        {/* Método de pagamento - virá do Stripe no futuro; por ora exibe recorrência */}
-                                        Boleto / PIX
+                                        PIX / Boleto
                                     </p>
+                                    <p className="text-[8px] text-muted-foreground/40 font-bold">via AbacatePay</p>
                                 </div>
                             </div>
 

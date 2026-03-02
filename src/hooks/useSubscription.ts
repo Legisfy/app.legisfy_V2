@@ -26,39 +26,56 @@ export const useSubscription = () => {
 
   const checkSubscription = async () => {
     if (!user) {
-      setSubscription(prev => ({ 
-        ...prev, 
+      setSubscription(prev => ({
+        ...prev,
         loading: false,
         subscribed: false,
-        plan: null 
+        plan: null,
+        error: null
       }));
       return;
     }
 
     try {
       setSubscription(prev => ({ ...prev, loading: true, error: null }));
-      
+
       const { data, error } = await supabase.functions.invoke('check-subscription', {
         headers: {
           Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
         },
       });
 
-      if (error) throw error;
+      // Edge function agora retorna 200 sempre (mesmo sem assinatura)
+      // Só considera erro real se não tem data ou tem um campo error sem subscribed
+      if (error) {
+        console.warn('[useSubscription] Edge function error (ignorado):', error);
+        setSubscription(prev => ({
+          ...prev,
+          loading: false,
+          error: null, // Nao mostrar erro para o usuario
+          subscribed: false
+        }));
+        return;
+      }
 
       setSubscription(prev => ({
         ...prev,
-        ...data,
+        subscribed: data?.subscribed ?? false,
+        plan: data?.plan ?? null,
+        product_id: data?.product_id ?? null,
+        subscription_end: data?.subscription_end ?? null,
+        customer_id: data?.customer_id ?? null,
         loading: false,
         error: null
       }));
 
     } catch (error) {
-      console.error('Error checking subscription:', error);
+      console.warn('[useSubscription] Error (ignorado):', error);
+      // Nao exibir erro para o usuario — o card de assinatura usa dados do contrato local
       setSubscription(prev => ({
         ...prev,
         loading: false,
-        error: error instanceof Error ? error.message : 'Erro desconhecido'
+        error: null
       }));
     }
   };
