@@ -48,7 +48,7 @@ export function PremiacaoModal({ children }: { children: React.ReactNode }) {
     tipo: 'eleitores' as const,
     meta: 0,
     premio: '',
-    membro_id: null as string | null
+    escopo: 'gabinete' as 'gabinete' | 'individual'
   });
 
   const [novaPontuacao, setNovaPontuacao] = useState({
@@ -73,7 +73,7 @@ export function PremiacaoModal({ children }: { children: React.ReactNode }) {
     }
     const success = await salvarMeta(novaMeta);
     if (success) {
-      setNovaMeta({ nome: '', descricao: '', tipo: 'eleitores', meta: 0, premio: '', membro_id: null });
+      setNovaMeta({ nome: '', descricao: '', tipo: 'eleitores', meta: 0, premio: '', escopo: 'gabinete' });
     }
   };
 
@@ -296,13 +296,11 @@ export function PremiacaoModal({ children }: { children: React.ReactNode }) {
                     />
                     <select
                       className="h-9 px-3 text-xs border border-border/40 rounded-lg bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary/30 transition-all col-span-2"
-                      value={novaMeta.membro_id || ''}
-                      onChange={(e) => setNovaMeta({ ...novaMeta, membro_id: e.target.value || null })}
+                      value={novaMeta.escopo}
+                      onChange={(e) => setNovaMeta({ ...novaMeta, escopo: e.target.value as any })}
                     >
-                      <option value="">Todo Gabinete</option>
-                      {assessores.map(assessor => (
-                        <option key={assessor.id} value={assessor.user_id}>{assessor.nome} ({assessor.cargo})</option>
-                      ))}
+                      <option value="gabinete">Meta: Todo Gabinete (Soma Coletiva)</option>
+                      <option value="individual">Meta: Individual (Para cada assessor bater)</option>
                     </select>
                     <Button
                       onClick={adicionarMeta}
@@ -346,8 +344,8 @@ export function PremiacaoModal({ children }: { children: React.ReactNode }) {
                                   variant="secondary"
                                   className="h-4 px-1.5 text-[7px] font-bold uppercase tracking-wider rounded-md bg-muted/30 text-muted-foreground shrink-0 flex items-center gap-1"
                                 >
-                                  {meta.membro_id ? <User className="h-2 w-2" /> : <UsersIcon className="h-2 w-2" />}
-                                  {meta.membro_id ? assessores.find(a => a.user_id === meta.membro_id)?.nome || 'Individual' : 'Gabinete'}
+                                  {meta.escopo === 'individual' ? <User className="h-2 w-2" /> : <UsersIcon className="h-2 w-2" />}
+                                  {meta.escopo === 'individual' ? 'Meta Individual (Sua)' : 'Meta do Gabinete (Todos)'}
                                 </Badge>
                               </div>
                               <p className="text-[9px] text-muted-foreground/50 leading-relaxed">
