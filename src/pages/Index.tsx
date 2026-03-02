@@ -58,7 +58,9 @@ const Index = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const { profile } = useCurrentUser();
   const { stats, assessorRanking, recentActivities, loading } = useGabineteData();
-  const { monthlyData, upcomingEvents, loading: monthlyLoading } = useMonthlyStats();
+  const { monthlyData, weeklyData, todayData, upcomingEvents, loading: monthlyLoading } = useMonthlyStats();
+  const [chartType, setChartType] = useState<'line' | 'bar'>('line');
+  const [chartPeriod, setChartPeriod] = useState<'hoje' | 'semana' | 'mes'>('mes');
   const [newVoterOpen, setNewVoterOpen] = useState(false);
   const [newIndicationOpen, setNewIndicationOpen] = useState(false);
   const [newDemandOpen, setNewDemandOpen] = useState(false);
@@ -476,63 +478,126 @@ const Index = () => {
 
 
 
-          {/* Produtividade Mensal */}
+          {/* Produtividade — Card Interativo */}
           <Card className="border border-border/40 bg-card/95 dark:bg-card/20 backdrop-blur-sm lg:col-span-2 shadow-none">
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
                 <CardTitle className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60 font-outfit">
                   <TrendingUp className="h-3 w-3 opacity-40" />
-                  Produtividade Mensal
+                  Produtividade
                 </CardTitle>
-                <Badge variant="outline" className="text-[7px] font-bold tracking-widest uppercase px-1.5 h-4 border-border/40 text-muted-foreground/40 bg-transparent">
-                  EVOLUÇÃO ANUAL
-                </Badge>
+
+                {/* Controles: Período + Tipo de gráfico */}
+                <div className="flex items-center gap-1.5">
+                  {/* Período */}
+                  <div className="flex items-center bg-muted/30 rounded-md p-0.5 gap-0.5">
+                    {(['hoje', 'semana', 'mes'] as const).map((p) => (
+                      <button
+                        key={p}
+                        onClick={() => setChartPeriod(p)}
+                        className={`px-2 h-5 text-[8px] font-bold uppercase tracking-widest rounded transition-all ${chartPeriod === p
+                            ? 'bg-background text-foreground shadow-sm'
+                            : 'text-muted-foreground/50 hover:text-muted-foreground'
+                          }`}
+                      >
+                        {p === 'hoje' ? 'Hoje' : p === 'semana' ? 'Semana' : 'Mês'}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Separador */}
+                  <div className="w-px h-4 bg-border/40" />
+
+                  {/* Tipo: Linha / Barra */}
+                  <div className="flex items-center bg-muted/30 rounded-md p-0.5 gap-0.5">
+                    <button
+                      onClick={() => setChartType('line')}
+                      title="Gráfico de linha"
+                      className={`px-2 h-5 text-[8px] font-bold uppercase tracking-widest rounded transition-all ${chartType === 'line'
+                          ? 'bg-background text-foreground shadow-sm'
+                          : 'text-muted-foreground/50 hover:text-muted-foreground'
+                        }`}
+                    >
+                      Linha
+                    </button>
+                    <button
+                      onClick={() => setChartType('bar')}
+                      title="Gráfico de barras"
+                      className={`px-2 h-5 text-[8px] font-bold uppercase tracking-widest rounded transition-all ${chartType === 'bar'
+                          ? 'bg-background text-foreground shadow-sm'
+                          : 'text-muted-foreground/50 hover:text-muted-foreground'
+                        }`}
+                    >
+                      Barra
+                    </button>
+                  </div>
+                </div>
               </div>
-              <CardDescription className="text-[8px] uppercase font-medium tracking-tighter opacity-40">Registros mensais por categoria</CardDescription>
+              <CardDescription className="text-[8px] uppercase font-medium tracking-tighter opacity-40">
+                {chartPeriod === 'hoje' ? 'Registros de hoje por turno'
+                  : chartPeriod === 'semana' ? 'Registros dos últimos 7 dias'
+                    : 'Registros dos últimos 6 meses'}
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="h-52">
-                {monthlyData && monthlyData.length > 0 ? (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={monthlyData} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.2} vertical={false} />
-                      <XAxis
-                        dataKey="month"
-                        axisLine={false}
-                        tickLine={false}
-                        tick={{ fontSize: 8, fill: 'hsl(var(--foreground))', fontWeight: 'bold', opacity: 0.5 }}
-                      />
-                      <YAxis
-                        axisLine={false}
-                        tickLine={false}
-                        tick={{ fontSize: 8, fill: 'hsl(var(--foreground))', fontWeight: 'bold', opacity: 0.5 }}
-                      />
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: 'hsl(var(--background))',
-                          border: '1px solid hsl(var(--border)/0.3)',
-                          borderRadius: '8px',
-                          fontSize: '9px',
-                          fontWeight: 'bold',
-                          boxShadow: 'none'
-                        }}
-                      />
-                      <Legend
-                        wrapperStyle={{ fontSize: '8px', fontWeight: 'bold', opacity: 0.5, paddingTop: '8px' }}
-                        formatter={(value) => value.charAt(0).toUpperCase() + value.slice(1)}
-                      />
-                      <Line type="monotone" dataKey="eleitores" name="Eleitores" stroke="#10b981" strokeWidth={2} dot={{ r: 2, fill: '#10b981' }} activeDot={{ r: 4 }} />
-                      <Line type="monotone" dataKey="demandas" name="Demandas" stroke="#3b82f6" strokeWidth={2} dot={{ r: 2, fill: '#3b82f6' }} activeDot={{ r: 4 }} />
-                      <Line type="monotone" dataKey="indicacoes" name="Indicações" stroke="#8b5cf6" strokeWidth={2} dot={{ r: 2, fill: '#8b5cf6' }} activeDot={{ r: 4 }} />
-                      <Line type="monotone" dataKey="ideias" name="Proj. de Lei" stroke="#f59e0b" strokeWidth={2} dot={{ r: 2, fill: '#f59e0b' }} activeDot={{ r: 4 }} />
-                    </LineChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <div className="flex flex-col items-center justify-center h-full opacity-20">
-                    <TrendingUp className="h-8 w-8 mb-2" />
-                    <p className="text-[9px] uppercase font-bold tracking-widest">Sem dados disponíveis</p>
-                  </div>
-                )}
+                {(() => {
+                  const data = chartPeriod === 'hoje' ? todayData : chartPeriod === 'semana' ? weeklyData : monthlyData;
+                  const xKey = 'label';
+                  const hasData = data && data.length > 0;
+                  const commonLines = [
+                    { key: 'eleitores', name: 'Eleitores', color: '#10b981' },
+                    { key: 'demandas', name: 'Demandas', color: '#3b82f6' },
+                    { key: 'indicacoes', name: 'Indicações', color: '#8b5cf6' },
+                    { key: 'ideias', name: 'Proj. de Lei', color: '#f59e0b' },
+                  ];
+
+                  if (!hasData) return (
+                    <div className="flex flex-col items-center justify-center h-full opacity-20">
+                      <TrendingUp className="h-8 w-8 mb-2" />
+                      <p className="text-[9px] uppercase font-bold tracking-widest">Sem dados disponíveis</p>
+                    </div>
+                  );
+
+                  const tooltipStyle = {
+                    backgroundColor: 'hsl(var(--background))',
+                    border: '1px solid hsl(var(--border)/0.3)',
+                    borderRadius: '8px',
+                    fontSize: '9px',
+                    fontWeight: 'bold',
+                    boxShadow: 'none'
+                  };
+                  const legendStyle = { fontSize: '8px', fontWeight: 'bold', opacity: 0.5, paddingTop: '8px' };
+                  const tickProps = { fontSize: 8, fill: 'hsl(var(--foreground))', fontWeight: 'bold' as const, opacity: 0.5 };
+
+                  return (
+                    <ResponsiveContainer width="100%" height="100%">
+                      {chartType === 'line' ? (
+                        <LineChart data={data} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.2} vertical={false} />
+                          <XAxis dataKey={xKey} axisLine={false} tickLine={false} tick={tickProps} />
+                          <YAxis axisLine={false} tickLine={false} tick={tickProps} />
+                          <Tooltip contentStyle={tooltipStyle} />
+                          <Legend wrapperStyle={legendStyle} />
+                          {commonLines.map(l => (
+                            <Line key={l.key} type="monotone" dataKey={l.key} name={l.name} stroke={l.color} strokeWidth={2} dot={{ r: 2, fill: l.color }} activeDot={{ r: 4 }} />
+                          ))}
+                        </LineChart>
+                      ) : (
+                        <BarChart data={data} barCategoryGap="25%" margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.2} vertical={false} />
+                          <XAxis dataKey={xKey} axisLine={false} tickLine={false} tick={tickProps} />
+                          <YAxis axisLine={false} tickLine={false} tick={tickProps} />
+                          <Tooltip cursor={{ fill: 'hsl(var(--muted))', opacity: 0.1 }} contentStyle={tooltipStyle} />
+                          <Legend wrapperStyle={legendStyle} />
+                          {commonLines.map(l => (
+                            <Bar key={l.key} dataKey={l.key} name={l.name} fill={l.color} opacity={0.85} radius={[2, 2, 0, 0]} />
+                          ))}
+                        </BarChart>
+                      )}
+                    </ResponsiveContainer>
+                  );
+                })()}
               </div>
             </CardContent>
           </Card>
