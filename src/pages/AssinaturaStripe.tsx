@@ -7,6 +7,7 @@ import { SubscriptionStatus } from '@/components/stripe/SubscriptionStatus';
 import { useSubscription } from '@/hooks/useSubscription';
 import { Check, Star, Zap, Crown, Shield } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
 
 // Configuração dos planos - SUBSTITUA os price IDs pelos reais do Stripe
 const PLANS = [
@@ -96,6 +97,18 @@ export default function AssinaturaStripe() {
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
   const { subscribed, plan: currentPlan } = useSubscription();
 
+  const [plans, setPlans] = useState<any[]>([]);
+  const [loadingPlans, setLoadingPlans] = useState(true);
+
+  React.useEffect(() => {
+    const fetchPlans = async () => {
+      const { data } = await supabase.from('plans').select('*').eq('is_active', true).order('monthly_price_cents');
+      if (data) setPlans(data);
+      setLoadingPlans(false);
+    };
+    fetchPlans();
+  }, []);
+
   const formatPrice = (priceInCents: number | null) => {
     if (!priceInCents) return 'Sob consulta';
     return new Intl.NumberFormat('pt-BR', {
@@ -140,8 +153,8 @@ export default function AssinaturaStripe() {
                 onClick={() => setBillingCycle('monthly')}
                 className={cn(
                   "px-8 py-3 rounded-xl text-sm font-semibold transition-all duration-300",
-                  billingCycle === 'monthly' 
-                    ? "bg-blue-600 text-white shadow-lg" 
+                  billingCycle === 'monthly'
+                    ? "bg-blue-600 text-white shadow-lg"
                     : "text-gray-600 hover:text-gray-900"
                 )}
               >
@@ -151,13 +164,13 @@ export default function AssinaturaStripe() {
                 onClick={() => setBillingCycle('yearly')}
                 className={cn(
                   "px-8 py-3 rounded-xl text-sm font-semibold transition-all duration-300 relative",
-                  billingCycle === 'yearly' 
-                    ? "bg-blue-600 text-white shadow-lg" 
+                  billingCycle === 'yearly'
+                    ? "bg-blue-600 text-white shadow-lg"
                     : "text-gray-600 hover:text-gray-900"
                 )}
               >
                 Anual
-                <Badge 
+                <Badge
                   className="absolute -top-3 -right-3 text-xs font-bold shadow-lg bg-orange-500 text-white border-0"
                 >
                   -20%
@@ -167,57 +180,30 @@ export default function AssinaturaStripe() {
           </div>
 
           {/* Grid de Planos */}
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-            {PLANS.map((plan) => {
-              const Icon = plan.icon;
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {plans.map((plan) => {
               const isCurrentPlan = currentPlan === plan.name;
-              const price = billingCycle === 'monthly' ? plan.monthlyPrice : plan.yearlyPrice;
-              const priceId = billingCycle === 'monthly' ? plan.priceIdMonthly : plan.priceIdYearly;
-              
-              const savings = plan.yearlyPrice && billingCycle === 'yearly' 
-                ? calculateSavings(plan.monthlyPrice, plan.yearlyPrice)
-                : 0;
+              const price = billingCycle === 'monthly' ? plan.monthly_price_cents : (plan.yearly_price_cents || plan.monthly_price_cents * 11);
+
+              const accentColor = plan.name === 'Starter' ? 'from-emerald-500 to-teal-500' :
+                plan.name === 'Pro' ? 'from-blue-500 to-indigo-500' :
+                  'from-amber-500 to-orange-500';
 
               return (
-                <Card 
+                <Card
                   key={plan.id}
                   className={cn(
-                    "relative overflow-hidden transition-all duration-500 hover:scale-105 hover:shadow-2xl border-0 bg-white/95 backdrop-blur-lg min-h-[600px]",
-                    plan.popular && "ring-4 ring-orange-400 shadow-2xl scale-110 z-10",
+                    "relative overflow-hidden transition-all duration-500 hover:scale-105 hover:shadow-2xl border-0 bg-white/95 backdrop-blur-lg min-h-[500px]",
+                    plan.name === 'Pro' && "ring-4 ring-primary/20 shadow-2xl scale-105 z-10",
                     isCurrentPlan && "ring-4 ring-blue-500"
                   )}
                 >
-                  {/* Background Gradient */}
-                  <div 
-                    className={cn("absolute inset-0 opacity-5 bg-gradient-to-br", plan.color)}
-                  />
-
-                  {/* Popular Badge */}
-                  {plan.popular && (
-                    <div className="absolute top-4 left-4 z-10">
-                      <Badge className="font-bold shadow-lg border-0 bg-orange-500 text-white">
-                        <Star className="h-3 w-3 mr-1" />
-                        MAIS POPULAR
-                      </Badge>
-                    </div>
-                  )}
-
-                  {/* Current Plan Badge */}
-                  {isCurrentPlan && (
-                    <div className="absolute top-4 right-4 z-10">
-                      <Badge className="bg-blue-500 text-white font-bold border-0 shadow-lg">
-                        <Check className="h-3 w-3 mr-1" />
-                        PLANO ATUAL
-                      </Badge>
-                    </div>
-                  )}
-
                   <CardHeader className="relative z-10">
                     <div className="flex items-center gap-3 mb-4">
-                      <div 
-                        className={cn("w-12 h-12 rounded-lg flex items-center justify-center bg-gradient-to-r", plan.color)}
-                      >
-                        <Icon className="h-6 w-6 text-white" />
+                      <div className={cn("w-12 h-12 rounded-lg flex items-center justify-center bg-gradient-to-r text-white", accentColor)}>
+                        {plan.name === 'Starter' ? <Shield className="h-6 w-6" /> :
+                          plan.name === 'Pro' ? <Zap className="h-6 w-6" /> :
+                            <Crown className="h-6 w-6" />}
                       </div>
                       <div>
                         <CardTitle className="text-2xl font-bold">{plan.name}</CardTitle>
@@ -225,63 +211,47 @@ export default function AssinaturaStripe() {
                       </div>
                     </div>
 
-                    {/* Pricing */}
-                    <div className="space-y-2">
+                    <div className="space-y-1">
                       <div className="flex items-baseline gap-2">
                         <span className="text-4xl font-bold text-gray-900">
                           {formatPrice(price)}
                         </span>
-                        <span className="text-gray-600">
+                        <span className="text-gray-600 text-xs uppercase font-bold">
                           /{billingCycle === 'monthly' ? 'mês' : 'ano'}
                         </span>
                       </div>
-                      
-                      {savings > 0 && (
-                        <div className="flex items-center gap-2">
-                          <Badge variant="secondary" className="text-xs bg-green-100 text-green-800 border-0">
-                            Economize {formatPrice(savings)}
-                          </Badge>
-                        </div>
-                      )}
                     </div>
                   </CardHeader>
 
                   <CardContent className="relative z-10 flex-1 flex flex-col">
-                    {/* Features */}
                     <div className="space-y-3 mb-8 flex-1">
-                      {plan.features.map((feature, idx) => (
+                      {plan.features?.map((feature: string, idx: number) => (
                         <div key={idx} className="flex items-start gap-3">
-                          <Check className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
+                          <Check className="h-4 w-4 text-green-600 flex-shrink-0 mt-0.5" />
                           <span className="text-sm text-gray-700">{feature}</span>
                         </div>
                       ))}
                     </div>
 
-                    {/* Action Button */}
-                    {priceId ? (
-                      <CheckoutButton
-                        priceId={priceId}
-                        plan={plan.id}
-                        planName={plan.name}
-                        className={cn(
-                          "w-full font-semibold transition-all duration-300 border-0",
-                          isCurrentPlan 
-                            ? "bg-gray-100 text-gray-600 cursor-default hover:bg-gray-100"
-                            : `bg-gradient-to-r ${plan.color} text-white shadow-lg hover:shadow-xl transform hover:scale-105`
-                        )}
-                      >
-                        {isCurrentPlan ? 'Plano Atual' : `Assinar ${plan.name}`}
-                      </CheckoutButton>
-                    ) : (
-                      <div className="w-full py-3 px-4 text-center text-gray-500 bg-gray-100 rounded-lg">
-                        Entre em Contato
-                      </div>
-                    )}
+                    <CheckoutButton
+                      planId={plan.id}
+                      planName={plan.name}
+                      recorrencia={billingCycle === 'monthly' ? 'mensal' : 'anual'}
+                      className={cn(
+                        "w-full font-semibold transition-all duration-300 border-0",
+                        isCurrentPlan
+                          ? "bg-gray-100 text-gray-600 cursor-default hover:bg-gray-100"
+                          : `bg-gradient-to-r ${accentColor} text-white shadow-lg hover:shadow-xl transform hover:scale-105`
+                      )}
+                    >
+                      {isCurrentPlan ? 'Plano Atual' : `Assinar ${plan.name}`}
+                    </CheckoutButton>
                   </CardContent>
                 </Card>
               );
             })}
           </div>
+
 
           {/* FAQ ou informações adicionais */}
           <div className="mt-20 text-center">
@@ -292,14 +262,14 @@ export default function AssinaturaStripe() {
               Nossa equipe está pronta para ajudar você a escolher o melhor plano
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <a 
-                href="mailto:contato@legisfy.com" 
+              <a
+                href="mailto:contato@legisfy.com"
                 className="inline-flex items-center px-6 py-3 bg-white border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
               >
                 📧 contato@legisfy.com
               </a>
-              <a 
-                href="https://wa.me/5511999999999" 
+              <a
+                href="https://wa.me/5511999999999"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"

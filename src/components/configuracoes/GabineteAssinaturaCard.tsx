@@ -23,7 +23,7 @@ const LIMIT_META = [
     { key: "users" as const, limitKey: "max_users", label: "Usuários", icon: Users, color: "bg-emerald-500", trackColor: "text-emerald-500" },
     { key: "demandas" as const, limitKey: "max_demandas", label: "Demandas", icon: MessageCircle, color: "bg-blue-500", trackColor: "text-blue-500" },
     { key: "indicacoes" as const, limitKey: "max_indicacoes", label: "Indicações", icon: FileSignature, color: "bg-purple-500", trackColor: "text-purple-500" },
-    { key: "ideias" as const, limitKey: "max_ideias", label: "Proj. de Lei", icon: FileText, color: "bg-amber-500", trackColor: "text-amber-500" },
+    { key: "projetos_lei" as const, limitKey: "max_projetos_lei", label: "Proj. de Lei", icon: FileText, color: "bg-amber-500", trackColor: "text-amber-500" },
 ];
 
 interface AvailablePlan {
@@ -58,6 +58,7 @@ function UsageBar({ pct, color }: { pct: number; color: string }) {
 function PlansModal({ open, onOpenChange, currentPlanId }: { open: boolean; onOpenChange: (v: boolean) => void; currentPlanId?: string }) {
     const [plans, setPlans] = useState<AvailablePlan[]>([]);
     const [loading, setLoading] = useState(true);
+    const [processPlanId, setProcessPlanId] = useState<string | null>(null);
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -174,17 +175,32 @@ function PlansModal({ open, onOpenChange, currentPlanId }: { open: boolean; onOp
                                     <Button
                                         size="sm"
                                         variant={isCurrent ? "outline" : "default"}
-                                        disabled={isCurrent}
+                                        disabled={isCurrent || !!processPlanId}
                                         className={cn(
                                             "w-full mt-3 h-8 text-[9px] font-bold uppercase tracking-widest",
                                             !isCurrent && "bg-primary hover:bg-primary/90"
                                         )}
-                                        onClick={() => {
-                                            onOpenChange(false);
-                                            navigate("/assinatura-stripe");
+                                        onClick={async () => {
+                                            if (isCurrent) return;
+                                            try {
+                                                setProcessPlanId(plan.id);
+                                                const { data, error } = await supabase.functions.invoke('create-checkout', {
+                                                    body: { planId: plan.id, recorrencia: 'mensal' },
+                                                });
+                                                if (error) throw error;
+                                                if (data?.url) {
+                                                    window.open(data.url, '_blank');
+                                                }
+                                            } catch (err) {
+                                                console.error("Erro no checkout:", err);
+                                            } finally {
+                                                setProcessPlanId(null);
+                                            }
                                         }}
                                     >
-                                        {isCurrent ? "Plano Ativo" : "Quero esse Plano"}
+                                        {processPlanId === plan.id ? (
+                                            <Loader2 className="h-3 w-3 animate-spin" />
+                                        ) : isCurrent ? "Plano Ativo" : "Quero esse Plano"}
                                     </Button>
                                 </div>
                             );
@@ -318,7 +334,7 @@ export function GabineteAssinaturaCard() {
                                         Pagamento
                                     </p>
                                     <p className="text-[11px] font-semibold text-foreground/80">
-                                        PIX / Boleto
+                                        PIX / Boleto {contract?.metadata?.card_last4 ? `(Final ${contract.metadata.card_last4})` : ''}
                                     </p>
                                     <p className="text-[8px] text-muted-foreground/40 font-bold">via AbacatePay</p>
                                 </div>

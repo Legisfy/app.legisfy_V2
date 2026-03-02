@@ -6,17 +6,17 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2, CreditCard } from 'lucide-react';
 
 interface CheckoutButtonProps {
-  priceId: string;
-  plan: string;
+  planId: string;
   planName: string;
+  recorrencia?: 'mensal' | 'anual';
   className?: string;
   children?: React.ReactNode;
 }
 
 export const CheckoutButton: React.FC<CheckoutButtonProps> = ({
-  priceId,
-  plan,
+  planId,
   planName,
+  recorrencia = 'mensal',
   className = "",
   children
 }) => {
@@ -39,8 +39,8 @@ export const CheckoutButton: React.FC<CheckoutButtonProps> = ({
 
       const { data, error } = await supabase.functions.invoke('create-checkout', {
         body: {
-          priceId,
-          plan
+          planId,
+          recorrencia
         },
         headers: {
           Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
@@ -69,8 +69,8 @@ export const CheckoutButton: React.FC<CheckoutButtonProps> = ({
   };
 
   return (
-    <Button 
-      onClick={handleCheckout} 
+    <Button
+      onClick={handleCheckout}
       disabled={loading || !user}
       className={`w-full ${className}`}
     >

@@ -8,6 +8,7 @@ export interface PlanLimits {
     max_demandas: number;
     max_indicacoes: number;
     max_ideias: number;
+    max_projetos_lei: number;
     monthly_price_cents: number;
     plan_name: string;
     plan_description: string;
@@ -20,6 +21,7 @@ export interface ContractInfo {
     recorrencia: string | null;
     is_trial: boolean;
     status: string | null;
+    metadata?: any;
 }
 
 export interface PlanUsage {
@@ -28,6 +30,7 @@ export interface PlanUsage {
     demandas: number;
     indicacoes: number;
     ideias: number;
+    projetos_lei: number;
 }
 
 export interface PlanLimitsResult {
@@ -49,6 +52,7 @@ const RESOURCE_TO_LIMIT: Record<keyof PlanUsage, keyof PlanLimits> = {
     demandas: 'max_demandas',
     indicacoes: 'max_indicacoes',
     ideias: 'max_ideias',
+    projetos_lei: 'max_projetos_lei',
 };
 
 export function usePlanLimits(): PlanLimitsResult {
@@ -56,7 +60,7 @@ export function usePlanLimits(): PlanLimitsResult {
     const [limits, setLimits] = useState<PlanLimits | null>(null);
     const [contract, setContract] = useState<ContractInfo | null>(null);
     const [usage, setUsage] = useState<PlanUsage>({
-        users: 0, eleitores: 0, demandas: 0, indicacoes: 0, ideias: 0,
+        users: 0, eleitores: 0, demandas: 0, indicacoes: 0, ideias: 0, projetos_lei: 0,
     });
     const [loading, setLoading] = useState(true);
 
@@ -71,7 +75,7 @@ export function usePlanLimits(): PlanLimitsResult {
             // 1. Buscar contrato ativo
             const { data: contractData } = await db
                 .from('contracts')
-                .select('plan_id, status, data_inicio, data_vencimento, recorrencia, is_trial')
+                .select('plan_id, status, data_inicio, data_vencimento, recorrencia, is_trial, metadata')
                 .eq('gabinete_id', cabinetId)
                 .eq('status', 'ativo')
                 .order('created_at', { ascending: false })
@@ -85,13 +89,14 @@ export function usePlanLimits(): PlanLimitsResult {
                     recorrencia: contractData.recorrencia,
                     is_trial: contractData.is_trial ?? false,
                     status: contractData.status,
+                    metadata: contractData.metadata,
                 });
 
                 // 2. Buscar detalhes do plano
                 if (contractData.plan_id) {
                     const { data: plan } = await db
                         .from('plans')
-                        .select('id, name, description, monthly_price_cents, max_users, max_eleitores, max_demandas, max_indicacoes, max_ideias')
+                        .select('id, name, description, monthly_price_cents, max_users, max_eleitores, max_demandas, max_indicacoes, max_ideias, max_projetos_lei')
                         .eq('id', contractData.plan_id)
                         .single();
 
@@ -106,17 +111,19 @@ export function usePlanLimits(): PlanLimitsResult {
                             max_demandas: plan.max_demandas ?? UNLIMITED,
                             max_indicacoes: plan.max_indicacoes ?? UNLIMITED,
                             max_ideias: plan.max_ideias ?? UNLIMITED,
+                            max_projetos_lei: plan.max_projetos_lei ?? UNLIMITED,
                         });
                     }
                 }
             }
 
             // 3. Contar uso atual em paralelo
-            const [eleitoresRes, demandasRes, indicacoesRes, ideiasRes, membersRes] = await Promise.all([
+            const [eleitoresRes, demandasRes, indicacoesRes, ideiasRes, projetosLeiRes, membersRes] = await Promise.all([
                 supabase.from('eleitores').select('id', { count: 'exact', head: true }).eq('gabinete_id', cabinetId),
                 supabase.from('demandas').select('id', { count: 'exact', head: true }).eq('gabinete_id', cabinetId),
                 supabase.from('indicacoes').select('id', { count: 'exact', head: true }).eq('gabinete_id', cabinetId),
                 supabase.from('ideias').select('id', { count: 'exact', head: true }).eq('gabinete_id', cabinetId),
+                (supabase.from as any)('projetos_lei').select('id', { count: 'exact', head: true }).eq('gabinete_id', cabinetId),
                 db.rpc('get_gabinete_members_with_profiles', { gab_id: cabinetId }),
             ]);
 
@@ -125,6 +132,7 @@ export function usePlanLimits(): PlanLimitsResult {
                 demandas: demandasRes.count ?? 0,
                 indicacoes: indicacoesRes.count ?? 0,
                 ideias: ideiasRes.count ?? 0,
+                projetos_lei: projetosLeiRes.count ?? 0,
                 users: Array.isArray(membersRes.data) ? membersRes.data.length : 0,
             });
         } catch (error) {
