@@ -29,6 +29,7 @@ import {
 import {
   Sidebar,
   SidebarContent,
+  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
@@ -433,6 +434,29 @@ export function AppSidebar() {
             </SidebarGroupContent>
           </SidebarGroup>
         </SidebarContent>
+
+        <SidebarFooter className="p-4 border-t border-border/10 bg-sidebar/30 backdrop-blur-sm">
+          {!collapsed ? (
+            <div className="flex flex-col items-center justify-center text-center space-y-1 py-1">
+              <div className="w-full h-[1px] bg-gradient-to-r from-transparent via-border/40 to-transparent mb-2" />
+              <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/40 font-outfit">
+                Legisfy - Todos os direitos Reservados
+              </p>
+              <div className="flex items-center gap-2">
+                <Badge variant="outline" className="text-[7px] px-1.5 py-0 h-4 border-primary/20 text-primary/70 bg-primary/5 font-mono">
+                  V.0.1
+                </Badge>
+                <span className="text-[9px] font-bold text-muted-foreground/30">2026</span>
+              </div>
+            </div>
+          ) : (
+            <div className="flex justify-center py-2 shrink-0">
+              <Badge variant="outline" className="text-[6px] px-1 h-3 border-primary/20 text-primary/60 bg-primary/5 font-black uppercase tracking-tighter">
+                V.0.1
+              </Badge>
+            </div>
+          )}
+        </SidebarFooter>
       </Sidebar>
     </TooltipProvider>
   );
