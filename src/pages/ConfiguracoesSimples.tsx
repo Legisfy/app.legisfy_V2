@@ -1,6 +1,7 @@
 import { AppLayout } from "@/components/layouts/AppLayout";
 import { LogoUploadCard } from "@/components/configuracoes/LogoUploadCard";
 import { PremiacoesCard } from "@/components/configuracoes/PremiacoesCard";
+import { GabineteAssinaturaCard } from "@/components/configuracoes/GabineteAssinaturaCard";
 import { useAuthContext } from "@/components/AuthProvider";
 import { Briefcase } from "lucide-react";
 
@@ -37,10 +38,11 @@ export default function ConfiguracoesSimples() {
           </div>
         </div>
 
-        {/* Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Cards — grid de 3 colunas em telas grandes */}
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           <LogoUploadCard />
           <PremiacoesCard />
+          <GabineteAssinaturaCard />
         </div>
       </div>
     </AppLayout>
