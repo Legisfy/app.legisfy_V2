@@ -11,7 +11,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { EnhancedVoterModal } from "@/components/modals/EnhancedVoterModal";
 import { NewIndicationModal } from "@/components/modals/MultiStepIndicationModal";
 import { NewDemandModal } from "@/components/modals/MultiStepDemandModal";
@@ -476,70 +476,64 @@ const Index = () => {
 
 
 
-          {/* Ranking de Assessores */}
+          {/* Produtividade Mensal */}
           <Card className="border border-border/40 bg-card/95 dark:bg-card/20 backdrop-blur-sm lg:col-span-2 shadow-none">
-            <CardHeader className="pb-4">
+            <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <CardTitle className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60 font-outfit">
-                  <Award className="h-3 w-3 opacity-40" />
-                  Eficiência da Equipe
+                  <TrendingUp className="h-3 w-3 opacity-40" />
+                  Produtividade Mensal
                 </CardTitle>
                 <Badge variant="outline" className="text-[7px] font-bold tracking-widest uppercase px-1.5 h-4 border-border/40 text-muted-foreground/40 bg-transparent">
-                  RANKING MENSAL
+                  EVOLUÇÃO ANUAL
                 </Badge>
               </div>
+              <CardDescription className="text-[8px] uppercase font-medium tracking-tighter opacity-40">Registros mensais por categoria</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-5">
-              {assessorRanking && assessorRanking.length > 0 ? (
-                assessorRanking.slice(0, 4).map((assessor, index) => {
-                  const maxPoints = Math.max(...assessorRanking.map(a => a.points)) || 100;
-                  const percentage = Math.round((assessor.points / maxPoints) * 100);
-
-                  return (
-                    <div key={assessor.user_id || index} className="space-y-1.5">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className="relative">
-                            <Avatar className="h-8 w-8 border border-border/40">
-                              <AvatarImage src={assessor.avatar_url} />
-                              <AvatarFallback className="text-[10px] bg-muted">{assessor.name.substring(0, 2).toUpperCase()}</AvatarFallback>
-                            </Avatar>
-                            {index === 0 && (
-                              <div className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-primary flex items-center justify-center border border-background shadow-lg">
-                                <Award className="h-1.5 w-1.5 text-white" />
-                              </div>
-                            )}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-[11px] font-bold text-foreground/80 truncate leading-none">{assessor.name}</p>
-                            <p className="text-[8px] text-muted-foreground/40 font-bold uppercase tracking-tight mt-1">
-                              {assessor.role || "Assessor"}
-                            </p>
-                          </div>
-                        </div>
-                        <span className="text-[10px] font-bold text-muted-foreground/60 font-outfit">
-                          {assessor.points} pts
-                        </span>
-                      </div>
-                      <div className="pl-11">
-                        <Progress
-                          value={percentage}
-                          className="h-1 bg-muted/30"
-                          indicatorClassName={cn(
-                            "transition-all duration-1000",
-                            index === 0 ? "bg-primary/60" : "bg-muted-foreground/20"
-                          )}
-                        />
-                      </div>
-                    </div>
-                  );
-                })
-              ) : (
-                <div className="text-center py-10 opacity-20">
-                  <Users2 className="mx-auto h-8 w-8 mb-3" />
-                  <p className="text-[9px] uppercase font-bold tracking-widest">Sem Pontuação</p>
-                </div>
-              )}
+            <CardContent>
+              <div className="h-52">
+                {monthlyData && monthlyData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={monthlyData} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.2} vertical={false} />
+                      <XAxis
+                        dataKey="month"
+                        axisLine={false}
+                        tickLine={false}
+                        tick={{ fontSize: 8, fill: 'hsl(var(--foreground))', fontWeight: 'bold', opacity: 0.5 }}
+                      />
+                      <YAxis
+                        axisLine={false}
+                        tickLine={false}
+                        tick={{ fontSize: 8, fill: 'hsl(var(--foreground))', fontWeight: 'bold', opacity: 0.5 }}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: 'hsl(var(--background))',
+                          border: '1px solid hsl(var(--border)/0.3)',
+                          borderRadius: '8px',
+                          fontSize: '9px',
+                          fontWeight: 'bold',
+                          boxShadow: 'none'
+                        }}
+                      />
+                      <Legend
+                        wrapperStyle={{ fontSize: '8px', fontWeight: 'bold', opacity: 0.5, paddingTop: '8px' }}
+                        formatter={(value) => value.charAt(0).toUpperCase() + value.slice(1)}
+                      />
+                      <Line type="monotone" dataKey="eleitores" name="Eleitores" stroke="#10b981" strokeWidth={2} dot={{ r: 2, fill: '#10b981' }} activeDot={{ r: 4 }} />
+                      <Line type="monotone" dataKey="demandas" name="Demandas" stroke="#3b82f6" strokeWidth={2} dot={{ r: 2, fill: '#3b82f6' }} activeDot={{ r: 4 }} />
+                      <Line type="monotone" dataKey="indicacoes" name="Indicações" stroke="#8b5cf6" strokeWidth={2} dot={{ r: 2, fill: '#8b5cf6' }} activeDot={{ r: 4 }} />
+                      <Line type="monotone" dataKey="ideias" name="Proj. de Lei" stroke="#f59e0b" strokeWidth={2} dot={{ r: 2, fill: '#f59e0b' }} activeDot={{ r: 4 }} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="flex flex-col items-center justify-center h-full opacity-20">
+                    <TrendingUp className="h-8 w-8 mb-2" />
+                    <p className="text-[9px] uppercase font-bold tracking-widest">Sem dados disponíveis</p>
+                  </div>
+                )}
+              </div>
             </CardContent>
           </Card>
 
