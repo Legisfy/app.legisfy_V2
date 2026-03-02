@@ -456,6 +456,15 @@ const Index = () => {
               <Phone className="h-3 w-3 opacity-40" />
               Demanda
             </Button>
+            <Button
+              onClick={() => navigate('/ideias')}
+              variant="ghost"
+              size="sm"
+              className="h-8 px-3 text-[9px] font-bold uppercase tracking-widest text-muted-foreground hover:text-amber-500 hover:bg-amber-500/5 gap-2"
+            >
+              <FileText className="h-3 w-3 opacity-40" />
+              Proj. de Lei
+            </Button>
             <div className="w-[1px] h-4 bg-border/40 mx-1" />
 
           </div>
@@ -496,8 +505,8 @@ const Index = () => {
                         key={p}
                         onClick={() => setChartPeriod(p)}
                         className={`px-2 h-5 text-[8px] font-bold uppercase tracking-widest rounded transition-all ${chartPeriod === p
-                            ? 'bg-background text-foreground shadow-sm'
-                            : 'text-muted-foreground/50 hover:text-muted-foreground'
+                          ? 'bg-background text-foreground shadow-sm'
+                          : 'text-muted-foreground/50 hover:text-muted-foreground'
                           }`}
                       >
                         {p === 'hoje' ? 'Hoje' : p === 'semana' ? 'Semana' : 'Mês'}
@@ -514,8 +523,8 @@ const Index = () => {
                       onClick={() => setChartType('line')}
                       title="Gráfico de linha"
                       className={`px-2 h-5 text-[8px] font-bold uppercase tracking-widest rounded transition-all ${chartType === 'line'
-                          ? 'bg-background text-foreground shadow-sm'
-                          : 'text-muted-foreground/50 hover:text-muted-foreground'
+                        ? 'bg-background text-foreground shadow-sm'
+                        : 'text-muted-foreground/50 hover:text-muted-foreground'
                         }`}
                     >
                       Linha
@@ -524,8 +533,8 @@ const Index = () => {
                       onClick={() => setChartType('bar')}
                       title="Gráfico de barras"
                       className={`px-2 h-5 text-[8px] font-bold uppercase tracking-widest rounded transition-all ${chartType === 'bar'
-                          ? 'bg-background text-foreground shadow-sm'
-                          : 'text-muted-foreground/50 hover:text-muted-foreground'
+                        ? 'bg-background text-foreground shadow-sm'
+                        : 'text-muted-foreground/50 hover:text-muted-foreground'
                         }`}
                     >
                       Barra
@@ -608,9 +617,9 @@ const Index = () => {
           </div>
         </div>
 
-        {/* Visão Geral e Metas */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {/* Visão Geral */}
+        {/* Visão Geral, Metas e Ranking */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          {/* Visão Geral (gráfico de barras acumulado) */}
           <Card className="border border-border/40 bg-card/80 dark:bg-card/20 backdrop-blur-sm shadow-none">
             <CardHeader className="pb-3">
               <CardTitle className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60 font-outfit">Produtividade Mensal</CardTitle>
@@ -654,6 +663,68 @@ const Index = () => {
 
           {/* Metas e Premiações */}
           <MetasRewards />
+
+          {/* Ranking de Assessores */}
+          <Card className="border border-border/40 bg-card/95 dark:bg-card/20 backdrop-blur-sm shadow-none">
+            <CardHeader className="pb-4">
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60 font-outfit">
+                  <Award className="h-3 w-3 opacity-40" />
+                  Eficiência da Equipe
+                </CardTitle>
+                <Badge variant="outline" className="text-[7px] font-bold tracking-widest uppercase px-1.5 h-4 border-border/40 text-muted-foreground/40 bg-transparent">
+                  PONTOS
+                </Badge>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {assessorRanking && assessorRanking.length > 0 ? (
+                assessorRanking.slice(0, 4).map((assessor, index) => {
+                  const maxPoints = Math.max(...assessorRanking.map(a => a.points)) || 100;
+                  const percentage = Math.round((assessor.points / maxPoints) * 100);
+                  return (
+                    <div key={assessor.user_id || index} className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="relative">
+                            <Avatar className="h-7 w-7 border border-border/40">
+                              <AvatarImage src={assessor.avatar_url} />
+                              <AvatarFallback className="text-[9px] bg-muted">{assessor.name.substring(0, 2).toUpperCase()}</AvatarFallback>
+                            </Avatar>
+                            {index === 0 && (
+                              <div className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-primary flex items-center justify-center border border-background shadow-lg">
+                                <Award className="h-1.5 w-1.5 text-white" />
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[10px] font-bold text-foreground/80 truncate leading-none">{assessor.name}</p>
+                            <p className="text-[8px] text-muted-foreground/40 font-bold uppercase tracking-tight mt-0.5">{assessor.role || 'Assessor'}</p>
+                          </div>
+                        </div>
+                        <span className="text-[9px] font-bold text-muted-foreground/60 font-outfit shrink-0">{assessor.points} pts</span>
+                      </div>
+                      <div className="pl-10">
+                        <Progress
+                          value={percentage}
+                          className="h-1 bg-muted/30"
+                          indicatorClassName={cn(
+                            "transition-all duration-1000",
+                            index === 0 ? "bg-primary/60" : "bg-muted-foreground/20"
+                          )}
+                        />
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="text-center py-8 opacity-20">
+                  <Users2 className="mx-auto h-7 w-7 mb-2" />
+                  <p className="text-[9px] uppercase font-bold tracking-widest">Sem Pontuação</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
 
         {/* Modals */}
