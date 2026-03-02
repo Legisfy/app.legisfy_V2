@@ -297,15 +297,6 @@ export function useGabineteData() {
       console.log('👥 Members RPC result (raw):', { members, error: membersError, count: members?.length || 0 });
       console.log('👥 Members detailed:', JSON.stringify(members, null, 2));
 
-      // Also check for assessores in the assessores table as fallback
-      const { data: assessoresRows } = await supabase
-        .from('assessores')
-        .select('user_id, nome, status')
-        .eq('gabinete_id', gabineteId)
-        .eq('status', 'ativo');
-
-      console.log('🧑‍💼 Assessores table result:', assessoresRows);
-
       // Buscar político do gabinete (que pode não estar em gabinete_members)
       const { data: gabinete, error: gabineteError } = await supabase
         .from('gabinetes')
@@ -326,14 +317,15 @@ export function useGabineteData() {
         politicoProfile = profile;
       }
 
-      // Convert RPC result to expected format and merge with assessores table
+      // Convert RPC result to expected format - apenas membros reais do gabinete
       const allMembers: any[] = [];
 
-      // Process RPC results (these come from get_gabinete_members_with_profiles)
+      // Processar apenas o resultado da RPC (membros cadastrados via gabinete_members)
       if (members && Array.isArray(members)) {
         console.log('📋 Processing RPC members:', members.length);
         members.forEach((m: any) => {
           console.log('👤 Processing member:', m);
+          // Excluir o político (dono do gabinete) do ranking de assessores
           if (m.role !== 'politico') {
             allMembers.push({
               user_id: m.user_id,
@@ -349,20 +341,6 @@ export function useGabineteData() {
 
       console.log('📊 Members after RPC processing:', allMembers);
 
-      // Add assessores from assessores table if not already included
-      const existingIds = new Set(allMembers.map((m: any) => m.user_id).filter(id => !!id));
-      (assessoresRows || []).forEach((a: any) => {
-        if (!a.user_id || !existingIds.has(a.user_id)) {
-          console.log('➕ Adding assessor from table:', a);
-          allMembers.push({
-            user_id: a.user_id || `ghost-${a.id || Math.random()}`,
-            role: a.cargo || 'Assessor',
-            profiles: { full_name: a.nome, avatar_url: null }
-          });
-          if (a.user_id) existingIds.add(a.user_id);
-        }
-      });
-
       // Use allMembers directly as assessorMembers (politicians already filtered)
       const assessorMembers = allMembers;
 
@@ -370,31 +348,9 @@ export function useGabineteData() {
       console.log('📊 Assessor members count:', assessorMembers.length);
 
       if (assessorMembers.length === 0) {
-        console.log('❌ No members or politician found - trying to add current user as fallback');
-
-        // Fallback: Add current user to ranking if they belong to the gabinete
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user && user.id !== gabinete?.politico_id) {
-          const { data: currentUserProfile } = await supabase
-            .from('profiles')
-            .select('full_name, avatar_url')
-            .eq('user_id', user.id)
-            .single();
-
-          if (currentUserProfile) {
-            assessorMembers.push({
-              user_id: user.id,
-              role: 'assessor',
-              profiles: currentUserProfile as any
-            });
-            console.log('✅ Added current user as fallback to assessor ranking');
-          }
-        }
-
-        if (assessorMembers.length === 0) {
-          setAssessorRanking([]);
-          return;
-        }
+        console.log('ℹ️ Nenhum assessor cadastrado no gabinete.');
+        setAssessorRanking([]);
+        return;
       }
 
       // Buscar sistema de pontuação configurado para o gabinete

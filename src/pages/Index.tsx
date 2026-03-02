@@ -457,7 +457,7 @@ const Index = () => {
               Demanda
             </Button>
             <Button
-              onClick={() => navigate('/ideias')}
+              onClick={() => setNewIdeaOpen(true)}
               variant="ghost"
               size="sm"
               className="h-8 px-3 text-[9px] font-bold uppercase tracking-widest text-muted-foreground hover:text-amber-500 hover:bg-amber-500/5 gap-2"
@@ -617,50 +617,8 @@ const Index = () => {
           </div>
         </div>
 
-        {/* Visão Geral, Metas e Ranking */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          {/* Visão Geral (gráfico de barras acumulado) */}
-          <Card className="border border-border/40 bg-card/80 dark:bg-card/20 backdrop-blur-sm shadow-none">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60 font-outfit">Produtividade Mensal</CardTitle>
-              <CardDescription className="text-[8px] uppercase font-medium tracking-tighter opacity-40">Volume acumulado por categoria</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="h-48 md:h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={monthlyData} barCategoryGap="25%">
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} vertical={false} />
-                    <XAxis
-                      dataKey="month"
-                      axisLine={false}
-                      tickLine={false}
-                      tick={{ fontSize: 9, fill: "hsl(var(--foreground))", fontWeight: 'bold', opacity: 0.7 }}
-                    />
-                    <YAxis
-                      axisLine={false}
-                      tickLine={false}
-                      tick={{ fontSize: 9, fill: "hsl(var(--foreground))", fontWeight: 'bold', opacity: 0.7 }}
-                    />
-                    <Tooltip
-                      cursor={{ fill: 'hsl(var(--muted))', opacity: 0.1 }}
-                      contentStyle={{
-                        backgroundColor: "hsl(var(--background))",
-                        border: "1px solid hsl(var(--border)/0.2)",
-                        borderRadius: "8px",
-                        fontSize: "9px",
-                        fontWeight: "bold",
-                        boxShadow: "none"
-                      }}
-                    />
-                    <Bar dataKey="eleitores" fill="#10b981" opacity={0.8} radius={[2, 2, 0, 0]} />
-                    <Bar dataKey="demandas" fill="#3b82f6" opacity={0.9} radius={[2, 2, 0, 0]} />
-                    <Bar dataKey="indicacoes" fill="#8b5cf6" opacity={1} radius={[2, 2, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </CardContent>
-          </Card>
-
+        {/* Metas e Ranking */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {/* Metas e Premiações */}
           <MetasRewards />
 
@@ -739,6 +697,10 @@ const Index = () => {
         <NewDemandModal
           open={newDemandOpen}
           onOpenChange={setNewDemandOpen}
+        />
+        <NewIdeaModal
+          open={newIdeaOpen}
+          onOpenChange={setNewIdeaOpen}
         />
 
 
