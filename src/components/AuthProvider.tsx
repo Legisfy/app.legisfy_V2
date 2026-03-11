@@ -136,6 +136,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signOut = async () => {
     const { error } = await supabase.auth.signOut();
+    localStorage.removeItem('2fa_verified');
     setIsExonerated(false); // Reset exoneration state
     return { error };
   };

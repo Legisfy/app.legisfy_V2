@@ -1,12 +1,11 @@
 import { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
-import { useTheme } from "next-themes";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2, Mail, ArrowRight, CheckCircle, AlertCircle } from "lucide-react";
+import { Loader2, Mail, ArrowRight, CheckCircle, AlertCircle, Lock, KeyRound } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useAuthContext } from "@/components/AuthProvider";
 import { useLoginBanner } from "@/hooks/useLoginBanner";
@@ -17,33 +16,76 @@ import RobotOverlay from "@/components/auth/RobotOverlay";
 
 const Auth = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [loading, setLoading] = useState(false);
-  const { user, session, isExonerated } = useAuthContext();
+  const { user, session, isExonerated, signIn } = useAuthContext();
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const { banner } = useLoginBanner();
+  const [view, setView] = useState<'login' | '2fa' | 'forgot-password' | 'update-password'>('login');
   const [captchaToken, setCaptchaToken] = useState<string>('');
   const turnstileRef = useRef<TurnstileWidgetHandle | null>(null);
 
   const [formData, setFormData] = useState({
     email: '',
+    password: '',
+    code: '',
+    newPassword: '',
+    confirmPassword: '',
   });
 
   useEffect(() => {
-    if (user && !isExonerated) {
+    // Detectar fluxo de recuperação de senha pelo hash ou query params do Supabase
+    const hashParams = new URLSearchParams(window.location.hash.substring(1));
+    const isRecovery = window.location.hash.includes('type=recovery') || 
+                       window.location.hash.includes('access_token=') ||
+                       new URLSearchParams(location.search).get('type') === 'recovery' ||
+                       hashParams.get('type') === 'recovery';
+
+    if (isRecovery) {
+      setView('update-password');
+      // Limpar flag de 2FA para garantir que o usuário precise validar novamente após trocar senha se necessário
+      localStorage.removeItem('2fa_verified');
+      return;
+    }
+
+    // Se o usuário estiver logado E com 2FA verificado, vai para o dashboard
+    const is2FAVerified = localStorage.getItem('2fa_verified') === 'true';
+    if (user && !isExonerated && is2FAVerified && view !== 'update-password') {
       navigate('/dashboard');
     }
-  }, [user, navigate, isExonerated]);
+  }, [user, navigate, isExonerated, location, view]);
 
   const validateForm = () => {
-    if (!formData.email.trim()) {
+    if (view !== 'update-password' && !formData.email.trim()) {
       setError('E-mail é obrigatório');
       return false;
     }
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(formData.email)) {
-      setError('Formato de e-mail inválido');
+    if (view === 'login' && !formData.password) {
+      setError('Senha é obrigatória');
       return false;
+    }
+    if (view === '2fa' && formData.code.length !== 6) {
+      setError('O código deve ter 6 dígitos');
+      return false;
+    }
+    if (view === 'update-password') {
+      if (!formData.newPassword || formData.newPassword.length < 6) {
+        setError('A nova senha deve ter pelo menos 6 caracteres');
+        return false;
+      }
+      if (formData.newPassword !== formData.confirmPassword) {
+        setError('As senhas não coincidem');
+        return false;
+      }
+    }
+    
+    if (view !== 'update-password') {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(formData.email)) {
+        setError('Formato de e-mail inválido');
+        return false;
+      }
     }
     return true;
   };
@@ -55,43 +97,132 @@ const Auth = () => {
 
     if (!validateForm()) return;
 
-    if (!captchaToken) {
-      setError('Verificação de segurança necessária.');
-      return;
-    }
-
-    setLoading(true);
-
-    try {
-      const { error } = await supabase.auth.signInWithOtp({
-        email: formData.email,
-        options: {
-          emailRedirectTo: `${window.location.hostname === 'localhost' ? window.location.origin : 'https://app.legisfy.app.br'}/dashboard`,
-          captchaToken: captchaToken
-        }
-      });
-
-      if (error) {
-        setError(`Erro: ${error.message}`);
-        turnstileRef.current?.reset();
-        setCaptchaToken('');
+    if (view === 'login') {
+      if (!captchaToken) {
+        setError('Verificação de segurança necessária.');
         return;
       }
 
-      setMessage('Link de acesso enviado! Verifique seu e-mail.');
-      toast({
-        title: 'Verifique seu e-mail',
-        description: 'Enviamos um link de login para você.'
-      });
+      setLoading(true);
 
-    } catch (error: any) {
-      setError('Ocorreu um erro inesperado. Tente novamente.');
-    } finally {
-      setLoading(false);
+      try {
+        const { data, error } = await signIn(formData.email, formData.password, captchaToken);
+
+        if (error) {
+          setError(`Erro: ${error.message}`);
+          turnstileRef.current?.reset();
+          setCaptchaToken('');
+          return;
+        }
+
+        if (data?.user) {
+          // Password login success, now trigger 2FA
+          const { error: funcError } = await supabase.functions.invoke('send-2fa-code', {
+            body: { email: formData.email }
+          });
+
+          if (funcError) {
+            console.error('Erro ao enviar 2FA:', funcError);
+            setError('Erro ao enviar código de verificação. Tente novamente.');
+            return;
+          }
+
+          setMessage('Código de verificação enviado para seu e-mail.');
+          setView('2fa');
+        }
+
+      } catch (error: any) {
+        setError('Ocorreu um erro inesperado. Tente novamente.');
+      } finally {
+        setLoading(false);
+      }
+    } else if (view === '2fa') {
+      // Verificação de 2FA
+      setLoading(true);
+      try {
+        const { data: codeData, error: codeError } = await supabase
+          .from('two_factor_codes')
+          .select('*')
+          .eq('email', formData.email.toLowerCase().trim())
+          .eq('code', formData.code)
+          .eq('used', false)
+          .gt('expires_at', new Date().toISOString())
+          .maybeSingle();
+
+        if (codeError || !codeData) {
+          setError('Código inválido ou expirado.');
+          setLoading(false);
+          return;
+        }
+
+        // Marcar código como usado
+        await supabase
+          .from('two_factor_codes')
+          .update({ used: true })
+          .eq('id', codeData.id);
+
+        localStorage.setItem('2fa_verified', 'true');
+        toast({
+          title: 'Login realizado',
+          description: 'Acesso autorizado com sucesso.'
+        });
+        navigate('/dashboard');
+      } catch (err) {
+        setError('Erro ao verificar código.');
+      } finally {
+        setLoading(false);
+      }
+    } else if (view === 'forgot-password') {
+      setLoading(true);
+      try {
+        const { data, error } = await supabase.functions.invoke('request-password-reset', {
+          body: { 
+            email: formData.email,
+            redirectTo: window.location.origin + '/auth'
+          }
+        });
+
+        if (error || (data && !data.success)) {
+          setError(error?.message || data?.error || 'Erro ao enviar e-mail de recuperação.');
+          return;
+        }
+
+        setMessage('Link de recuperação enviado! Verifique seu e-mail.');
+      } catch (err) {
+        setError('Erro ao solicitar recuperação de senha.');
+      } finally {
+        setLoading(false);
+      }
+    } else if (view === 'update-password') {
+      setLoading(true);
+      try {
+        const { error } = await supabase.auth.updateUser({
+          password: formData.newPassword
+        });
+
+        if (error) {
+          setError(error.message);
+          return;
+        }
+
+        toast({
+          title: 'Senha atualizada!',
+          description: 'Sua senha foi alterada com sucesso.'
+        });
+        
+        // Após resetar senha, por segurança, pede login novamente
+        setMessage('Senha alterada! Faça login com sua nova senha.');
+        setView('login');
+        setFormData({ ...formData, password: '', newPassword: '', confirmPassword: '' });
+      } catch (err) {
+        setError('Erro ao atualizar senha.');
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
-  if (user && session) {
+  if (user && session && localStorage.getItem('2fa_verified') === 'true' && view === 'login') {
     return (
       <div className="min-h-screen flex items-center justify-center bg-black">
         <Loader2 className="h-8 w-8 animate-spin text-white/20" />
@@ -99,24 +230,36 @@ const Auth = () => {
     );
   }
 
+  const getTitle = () => {
+    switch (view) {
+      case '2fa': return 'Verificação de Segurança';
+      case 'forgot-password': return 'Recuperar Senha';
+      case 'update-password': return 'Nova Senha';
+      default: return 'Acesse sua conta';
+    }
+  };
+
+  const getDescription = () => {
+    switch (view) {
+      case '2fa': return `Enviamos um código de 6 dígitos para ${formData.email}. Insira-o abaixo.`;
+      case 'forgot-password': return 'Informe seu e-mail para receber um link de redefinição de senha.';
+      case 'update-password': return 'Escolha uma nova senha segura para sua conta.';
+      default: return 'Entre com seu e-mail e senha para gerenciar seu mandato.';
+    }
+  };
+
   return (
     <div className="min-h-screen relative overflow-hidden bg-black text-white selection:bg-white/10 font-sans">
-      {/* Background Metallic Glow */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-white/[0.03] rounded-full blur-[120px] pointer-events-none" />
 
       <div className="relative z-10 min-h-screen flex flex-col md:flex-row items-center justify-center p-6 md:p-12 lg:gap-32">
-
-        {/* Left Side: Robot Component (Dynamic & Interactive 3D) */}
         <div className="hidden lg:flex flex-col items-center justify-center w-full max-w-2xl h-[600px] pointer-events-auto relative">
           <SplineRobot />
           <RobotOverlay />
-          {/* Bottom Gradient Overlay to hide leg cut */}
           <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-black via-black/80 to-transparent z-30 pointer-events-none" />
         </div>
 
-        {/* Login Card with Enhanced Background Light Effect */}
         <div className="relative group/card w-full max-w-[480px]">
-          {/* Layered Metallic Glows */}
           <div className="absolute -inset-4 bg-white/[0.03] rounded-[2.5rem] blur-3xl pointer-events-none" />
           <div className="absolute inset-x-8 -top-8 bottom-auto h-32 bg-white/[0.05] rounded-full blur-[80px] pointer-events-none" />
           <div className="absolute -inset-1 bg-gradient-to-b from-white/10 via-transparent to-transparent rounded-2xl blur-md opacity-20 pointer-events-none" />
@@ -132,10 +275,10 @@ const Auth = () => {
 
                 <div className="space-y-2 text-center">
                   <CardTitle className="text-2xl font-bold tracking-tight text-white">
-                    Acesse seu gabinete
+                    {getTitle()}
                   </CardTitle>
                   <CardDescription className="text-sm text-white/30 leading-relaxed max-w-[320px] mx-auto">
-                    Se você já tem uma conta na Legisfy, enviaremos um link mágico para seu e-mail para autenticação e confirmação imediata.
+                    {getDescription()}
                   </CardDescription>
                 </div>
               </div>
@@ -158,23 +301,105 @@ const Auth = () => {
                 )}
 
                 <form onSubmit={handleSubmit} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="email" className="text-[11px] font-medium text-white/40 ml-1">
-                      Seu E-mail
-                    </Label>
-                    <div className="relative group">
-                      <Input
-                        id="email"
-                        type="email"
-                        placeholder="seu@email.com.br"
-                        value={formData.email}
-                        onChange={(e) => setFormData({ email: e.target.value })}
-                        className="h-12 bg-white/[0.02] border-white/5 rounded-lg focus:border-white/20 focus:ring-0 transition-all text-white placeholder:text-white/10"
-                        disabled={loading}
-                        required
-                      />
+                  {(view === 'login' || view === 'forgot-password') && (
+                    <div className="space-y-2">
+                      <Label htmlFor="email" className="text-[11px] font-medium text-white/40 ml-1">
+                        Seu E-mail
+                      </Label>
+                      <div className="relative group">
+                        <Input
+                          id="email"
+                          type="email"
+                          placeholder="seu@email.com.br"
+                          value={formData.email}
+                          onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                          className="h-12 bg-white/[0.02] border-white/5 rounded-lg focus:border-white/20 focus:ring-0 transition-all text-white placeholder:text-white/10"
+                          disabled={loading}
+                          required
+                        />
+                      </div>
                     </div>
-                  </div>
+                  )}
+
+                  {view === 'login' && (
+                    <div className="space-y-2">
+                      <Label htmlFor="password" className="text-[11px] font-medium text-white/40 ml-1">
+                        Sua Senha
+                      </Label>
+                      <div className="relative group">
+                        <Input
+                          id="password"
+                          type="password"
+                          placeholder="••••••••"
+                          value={formData.password}
+                          onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                          className="h-12 bg-white/[0.02] border-white/5 rounded-lg focus:border-white/20 focus:ring-0 transition-all text-white placeholder:text-white/10"
+                          disabled={loading}
+                          required
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {view === '2fa' && (
+                    <div className="space-y-2">
+                      <Label htmlFor="code" className="text-[11px] font-medium text-white/40 ml-1">
+                        Código de 6 dígitos
+                      </Label>
+                      <div className="relative group">
+                        <Input
+                          id="code"
+                          type="text"
+                          maxLength={6}
+                          placeholder="000000"
+                          value={formData.code}
+                          onChange={(e) => setFormData({ ...formData, code: e.target.value.replace(/\D/g, '') })}
+                          className="h-12 bg-white/[0.02] border-white/5 rounded-lg focus:border-white/20 focus:ring-0 transition-all text-white text-center text-2xl tracking-[1em] placeholder:text-white/10"
+                          disabled={loading}
+                          required
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {view === 'update-password' && (
+                    <>
+                      <div className="space-y-2">
+                        <Label htmlFor="new-password" className="text-[11px] font-medium text-white/40 ml-1">
+                          Nova Senha
+                        </Label>
+                        <div className="relative group">
+                          <Input
+                            id="new-password"
+                            type="password"
+                            placeholder="••••••••"
+                            value={formData.newPassword}
+                            onChange={(e) => setFormData({ ...formData, newPassword: e.target.value })}
+                            className="h-12 bg-white/[0.02] border-white/5 rounded-lg focus:border-white/20 focus:ring-0 transition-all text-white placeholder:text-white/10"
+                            disabled={loading}
+                            required
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="confirm-password" className="text-[11px] font-medium text-white/40 ml-1">
+                          Confirmar Nova Senha
+                        </Label>
+                        <div className="relative group">
+                          <Input
+                            id="confirm-password"
+                            type="password"
+                            placeholder="••••••••"
+                            value={formData.confirmPassword}
+                            onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                            className="h-12 bg-white/[0.02] border-white/5 rounded-lg focus:border-white/20 focus:ring-0 transition-all text-white placeholder:text-white/10"
+                            disabled={loading}
+                            required
+                          />
+                        </div>
+                      </div>
+                    </>
+                  )}
 
                   <Button
                     type="submit"
@@ -185,38 +410,55 @@ const Auth = () => {
                       <Loader2 className="h-4 w-4 animate-spin" />
                     ) : (
                       <>
-                        Solicitar acesso
+                        {view === 'login' && 'Autenticar'}
+                        {view === '2fa' && 'Confirmar código'}
+                        {view === 'forgot-password' && 'Solicitar link'}
+                        {view === 'update-password' && 'Salvar nova senha'}
                         <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
                       </>
                     )}
                   </Button>
 
-                  <div className="flex justify-center -mb-2 py-4">
-                    <TurnstileWidget
-                      ref={turnstileRef}
-                      siteKey="0x4AAAAAAB08RnSc6cPswWIV"
-                      onSuccess={(token) => setCaptchaToken(token)}
-                      onError={() => {
-                        setCaptchaToken('');
-                        setError('Falha na autenticação humana.');
-                      }}
-                      onExpire={() => setCaptchaToken('')}
-                      theme="dark"
-                      size="normal"
-                    />
-                  </div>
+                  {view === 'login' && (
+                    <div className="flex justify-center -mb-2 py-4">
+                      <TurnstileWidget
+                        ref={turnstileRef}
+                        siteKey="0x4AAAAAAB08RnSc6cPswWIV"
+                        onSuccess={(token) => setCaptchaToken(token)}
+                        onError={() => {
+                          setCaptchaToken('');
+                          setError('Falha na autenticação humana.');
+                        }}
+                        onExpire={() => setCaptchaToken('')}
+                        theme="dark"
+                        size="normal"
+                      />
+                    </div>
+                  )}
+
+                  {(view === '2fa' || view === 'forgot-password' || view === 'update-password') && (
+                    <Button 
+                      variant="link" 
+                      className="w-full text-xs text-white/40 hover:text-white"
+                      onClick={() => setView('login')}
+                      type="button"
+                    >
+                      Voltar para o login
+                    </Button>
+                  )}
                 </form>
               </div>
 
-              <div className="flex items-center justify-between pt-4 border-t border-white/[0.03]">
-                <a href="#" className="text-[11px] text-white/40 hover:text-white transition-colors">
-                  Esqueceu sua senha?
-                </a>
-                <a href="/onboarding" className="text-[11px] text-white/40 hover:text-white transition-colors flex items-center gap-1 group">
-                  Criar uma nova conta
-                  <ArrowRight className="h-3 w-3 group-hover:translate-x-0.5 transition-transform" />
-                </a>
-              </div>
+              {view === 'login' && (
+                <div className="flex items-center justify-center pt-4 border-t border-white/[0.03]">
+                  <button 
+                    onClick={() => setView('forgot-password')}
+                    className="text-[11px] text-white/40 hover:text-white transition-colors"
+                  >
+                    Esqueceu sua senha?
+                  </button>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>

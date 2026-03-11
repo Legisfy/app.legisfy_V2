@@ -115,6 +115,17 @@ const AuthCallback = () => {
             navigate('/dashboard');
           }
         } else {
+          // Check if this is a password recovery link
+          const hashParams = new URLSearchParams(window.location.hash.substring(1));
+          const isRecovery = searchParams.get('type') === 'recovery' || 
+                            hashParams.get('type') === 'recovery';
+
+          if (isRecovery) {
+            console.log('Recovery link detected in AuthCallback, redirecting to /auth');
+            navigate('/auth#type=recovery');
+            return;
+          }
+
           // Regular signup/login
           toast({
             title: "Autenticação realizada!",

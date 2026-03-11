@@ -34,7 +34,15 @@ const AuthGuardSimples = ({ children }: AuthGuardProps) => {
     // Simple redirect logic - no complex database queries
     if (user) {
       // User is authenticated
-      if (location.pathname === '/auth') {
+      const is2FAVerified = localStorage.getItem('2fa_verified') === 'true';
+      
+      if (!is2FAVerified && location.pathname !== '/auth') {
+        console.log('⚠️ Usuário logado mas sem 2FA verificado. Redirecionando para /auth');
+        navigate('/auth');
+        return;
+      }
+
+      if (is2FAVerified && location.pathname === '/auth') {
         navigate('/dashboard');
       }
     } else {
@@ -58,7 +66,9 @@ const AuthGuardSimples = ({ children }: AuthGuardProps) => {
 
   // Render children for public routes or authenticated routes
   const publicPaths = ['/auth', '/onboarding', '/politico-onboarding', '/admin-auth', '/convite/aceitar', '/aceitar-convite-equipe'];
-  if (publicPaths.includes(location.pathname) || user) {
+  const is2FAVerified = localStorage.getItem('2fa_verified') === 'true';
+
+  if (publicPaths.includes(location.pathname) || (user && is2FAVerified)) {
     return <>{children}</>;
   }
 
