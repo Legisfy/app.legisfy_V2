@@ -292,10 +292,6 @@ export function AppNavbar() {
                 <Camera className="mr-2 h-4 w-4" />
                 Alterar Foto
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => navigate('/configuracoes')}>
-                <Settings2 className="mr-2 h-4 w-4" />
-                Configurações
-              </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 className="text-destructive"
