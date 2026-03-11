@@ -169,6 +169,7 @@ const Auth = () => {
       } finally {
         setLoading(false);
       }
+    }
   };
 
   if (user && session && localStorage.getItem('2fa_verified') === 'true' && view === 'login') {
