@@ -45,8 +45,8 @@ const AuthGuardSimples = ({ children }: AuthGuardProps) => {
         const isRecovery = hash.includes('type=recovery') || hash.includes('access_token=') || search.includes('type=recovery');
         
         if (isRecovery) {
-          console.log('🚩 Preservando token de recuperação no redirecionamento');
-          navigate(`/auth${hash}${search}`);
+          console.log('🚩 Preservando token de recuperação no redirecionamento para /reset-password');
+          navigate(`/reset-password${hash}${search}`);
         } else {
           navigate('/auth');
         }

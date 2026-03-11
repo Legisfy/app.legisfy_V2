@@ -153,6 +153,24 @@ function PublicLandingPage() {
   );
 }
 
+// Componente inteligente para redirecionar da raiz (/)
+// Se houver um token de recuperação de senha, manda para /reset-password
+// Caso contrário, manda para o /dashboard normal
+const RootRedirect = () => {
+  const hash = window.location.hash;
+  const search = window.location.search;
+  const isRecovery = hash.includes('type=recovery') || 
+                    hash.includes('access_token=') || 
+                    search.includes('type=recovery');
+  
+  if (isRecovery) {
+    console.log('🚩 Raiz detectou recuperação de senha. Redirecionando para /reset-password');
+    return <Navigate to={`/reset-password${hash}${search}`} replace />;
+  }
+  
+  return <Navigate to="/dashboard" replace />;
+};
+
 // Global Exoneration Handler Component
 function GlobalExonerationHandler() {
   const context = useAuthContext();
@@ -213,7 +231,7 @@ const App = () => (
                   <GlobalExonerationHandler />
                   <Routes>
                     {/* Public routes - outside AuthGuard */}
-                    <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                    <Route path="/" element={<RootRedirect />} />
                     <Route path="/p/:slug" element={<PublicLandingPage />} />
                     <Route path="/auth" element={<Auth />} />
                     <Route path="/reset-password" element={<ResetPassword />} />
