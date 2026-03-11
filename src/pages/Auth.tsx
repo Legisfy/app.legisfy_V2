@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2, Mail, ArrowRight, CheckCircle, AlertCircle, Lock, KeyRound } from "lucide-react";
+import { Loader2, Mail, ArrowRight, CheckCircle, AlertCircle, Lock, KeyRound, Eye, EyeOff } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useAuthContext } from "@/components/AuthProvider";
 import { useLoginBanner } from "@/hooks/useLoginBanner";
@@ -25,6 +25,7 @@ const Auth = () => {
   const [view, setView] = useState<'login' | '2fa' | 'forgot-password'>('login');
   const [captchaToken, setCaptchaToken] = useState<string>('');
   const turnstileRef = useRef<TurnstileWidgetHandle | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
 
   const [formData, setFormData] = useState({
     email: '',
@@ -33,6 +34,16 @@ const Auth = () => {
     newPassword: '',
     confirmPassword: '',
   });
+
+  const translateError = (err: any) => {
+    const msg = err?.message?.toLowerCase() || '';
+    if (msg.includes('invalid login credentials')) return 'E-mail ou senha incorretos.';
+    if (msg.includes('email not confirmed')) return 'Por favor, confirme seu e-mail antes de acessar.';
+    if (msg.includes('user not found')) return 'Usuário não encontrado.';
+    if (msg.includes('rate limit exceeded')) return 'Muitas tentativas. Tente novamente em alguns minutos.';
+    if (msg.includes('server error')) return 'Erro interno do servidor. Tente novamente mais tarde.';
+    return err?.message || 'Ocorreu um erro inesperado.';
+  };
 
   useEffect(() => {
     // Redirecionar para dashboard apenas em fluxos de login normais
@@ -85,7 +96,7 @@ const Auth = () => {
         const { data, error } = await signIn(formData.email, formData.password, captchaToken);
 
         if (error) {
-          setError(`Erro: ${error.message}`);
+          setError(translateError(error));
           turnstileRef.current?.reset();
           setCaptchaToken('');
           return;
@@ -290,14 +301,25 @@ const Auth = () => {
                       <div className="relative group">
                         <Input
                           id="password"
-                          type="password"
+                          type={showPassword ? "text" : "password"}
                           placeholder="••••••••"
                           value={formData.password}
                           onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                          className="h-12 bg-white/[0.02] border-white/5 rounded-lg focus:border-white/20 focus:ring-0 transition-all text-white placeholder:text-white/10"
+                          className="h-12 bg-white/[0.02] border-white/5 rounded-lg focus:border-white/20 focus:ring-0 transition-all text-white placeholder:text-white/10 pr-12"
                           disabled={loading}
                           required
                         />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 p-2 text-white/20 hover:text-white/60 transition-colors"
+                        >
+                          {showPassword ? (
+                            <EyeOff className="h-4 w-4" />
+                          ) : (
+                            <Eye className="h-4 w-4" />
+                          )}
+                        </button>
                       </div>
                     </div>
                   )}
