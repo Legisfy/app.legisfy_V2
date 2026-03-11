@@ -35,7 +35,16 @@ const Auth = () => {
   });
 
   useEffect(() => {
-    // Detectar fluxo de recuperação de senha pelo hash ou query params do Supabase
+    // Escutar por mudanças no estado de autenticação para detectar recuperação de senha
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('🔔 Auth state change:', event);
+      if (event === 'PASSWORD_RECOVERY') {
+        setView('update-password');
+        localStorage.removeItem('2fa_verified');
+      }
+    });
+
+    // Detectar fluxo de recuperação de senha pelo hash ou query params do Supabase (Fallback)
     const hashParams = new URLSearchParams(window.location.hash.substring(1));
     const isRecovery = window.location.hash.includes('type=recovery') || 
                        window.location.hash.includes('access_token=') ||
@@ -44,9 +53,7 @@ const Auth = () => {
 
     if (isRecovery) {
       setView('update-password');
-      // Limpar flag de 2FA para garantir que o usuário precise validar novamente após trocar senha se necessário
       localStorage.removeItem('2fa_verified');
-      return;
     }
 
     // Se o usuário estiver logado E com 2FA verificado, vai para o dashboard
@@ -54,6 +61,10 @@ const Auth = () => {
     if (user && !isExonerated && is2FAVerified && view !== 'update-password') {
       navigate('/dashboard');
     }
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, [user, navigate, isExonerated, location, view]);
 
   const validateForm = () => {
