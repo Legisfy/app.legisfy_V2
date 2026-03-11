@@ -38,7 +38,18 @@ const AuthGuardSimples = ({ children }: AuthGuardProps) => {
       
       if (!is2FAVerified && location.pathname !== '/auth') {
         console.log('⚠️ Usuário logado mas sem 2FA verificado. Redirecionando para /auth');
-        navigate('/auth');
+        
+        // Preservar hash e busca se for recuperação de senha
+        const hash = window.location.hash;
+        const search = window.location.search;
+        const isRecovery = hash.includes('type=recovery') || hash.includes('access_token=') || search.includes('type=recovery');
+        
+        if (isRecovery) {
+          console.log('🚩 Preservando token de recuperação no redirecionamento');
+          navigate(`/auth${hash}${search}`);
+        } else {
+          navigate('/auth');
+        }
         return;
       }
 
