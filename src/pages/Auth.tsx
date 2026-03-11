@@ -36,41 +36,35 @@ const Auth = () => {
 
   useEffect(() => {
     // 1. Escutar por mudanças no estado de autenticação (PASSWORD_RECOVERY)
+    // O Supabase dispara esse evento quando o usuário clica no link de recuperação de senha.
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       console.log('🔔 Auth event:', event);
       if (event === 'PASSWORD_RECOVERY') {
+        console.log('🚩 PASSWORD_RECOVERY detected via event');
         setView('update-password');
         localStorage.removeItem('2fa_verified');
       }
     });
 
     // 2. Fallback: Checar URL inicial para type=recovery
-    const checkRecovery = () => {
-      const hashParams = new URLSearchParams(window.location.hash.substring(1));
-      const hasRecoveryToken = window.location.hash.includes('access_token=') || 
-                               window.location.hash.includes('type=recovery') ||
-                               hashParams.get('type') === 'recovery';
-      
-      const searchParams = new URLSearchParams(location.search);
-      const isRecoverySearch = searchParams.get('type') === 'recovery';
+    // Útil se o evento onAuthStateChange já tiver disparado antes do componente montar.
+    const hash = window.location.hash;
+    const searchParams = new URLSearchParams(location.search);
+    const isRecovery = hash.includes('type=recovery') || 
+                       hash.includes('access_token=') || 
+                       searchParams.get('type') === 'recovery';
 
-      if (hasRecoveryToken || isRecoverySearch) {
-        console.log('🚩 Recovery detected via URL');
-        setView('update-password');
-        localStorage.removeItem('2fa_verified');
-        return true;
-      }
-      return false;
-    };
+    if (isRecovery) {
+      console.log('🚩 Recovery detected via hash/search');
+      setView('update-password');
+      localStorage.removeItem('2fa_verified');
+    }
 
-    const isRecovering = checkRecovery();
-
-    // 3. Redirecionar para dashboard apenas se estiver logado, verificado e NÃO estiver em recuperação
-    if (!isRecovering && user && !isExonerated) {
-      const is2FAVerified = localStorage.getItem('2fa_verified') === 'true';
-      if (is2FAVerified && view === 'login') {
-        navigate('/dashboard');
-      }
+    // 3. Redirecionar para dashboard apenas em fluxos de login normais
+    // Se estivermos em recuperação ou atualizando senha, bloqueamos o redirecionamento global.
+    const is2FAVerified = localStorage.getItem('2fa_verified') === 'true';
+    if (user && !isExonerated && is2FAVerified && view === 'login' && !isRecovery) {
+      navigate('/dashboard');
     }
 
     return () => subscription.unsubscribe();
