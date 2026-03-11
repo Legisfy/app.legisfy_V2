@@ -20,6 +20,7 @@ import Configuracoes from "./pages/ConfiguracoesSimples";
 import Perfil from "./pages/Perfil";
 import DuvidasSugestoes from "./pages/DuvidasSugestoes";
 import Auth from "./pages/Auth";
+import ResetPassword from "./pages/ResetPassword";
 import AuthCallback from "./pages/AuthCallback";
 import AdminAuth from "./pages/AdminAuth";
 import AuthGuardSimples from "./components/AuthGuardSimples";
@@ -215,6 +216,7 @@ const App = () => (
                     <Route path="/" element={<Navigate to="/dashboard" replace />} />
                     <Route path="/p/:slug" element={<PublicLandingPage />} />
                     <Route path="/auth" element={<Auth />} />
+                    <Route path="/reset-password" element={<ResetPassword />} />
                     <Route path="/auth-callback" element={<AuthCallback />} />
                     <Route path="/admin-auth" element={<AdminAuth />} />
                     <Route path="/onboarding" element={<SaaSOnboarding />} />

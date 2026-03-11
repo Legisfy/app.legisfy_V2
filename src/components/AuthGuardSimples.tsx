@@ -25,7 +25,7 @@ const AuthGuardSimples = ({ children }: AuthGuardProps) => {
     if (loading) return; // Wait for auth state to be determined
 
     // IMPORTANTE: Sempre permitir acesso a rotas públicas sem verificação
-    const publicPaths = ['/auth', '/onboarding', '/politico-onboarding', '/convite/aceitar', '/aceitar-convite-equipe', '/admin-auth'];
+    const publicPaths = ['/auth', '/reset-password', '/onboarding', '/politico-onboarding', '/convite/aceitar', '/aceitar-convite-equipe', '/admin-auth'];
     if (publicPaths.includes(location.pathname)) {
       console.log('✅ Rota pública permitida:', location.pathname);
       return;

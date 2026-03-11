@@ -22,7 +22,7 @@ const Auth = () => {
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const { banner } = useLoginBanner();
-  const [view, setView] = useState<'login' | '2fa' | 'forgot-password' | 'update-password'>('login');
+  const [view, setView] = useState<'login' | '2fa' | 'forgot-password'>('login');
   const [captchaToken, setCaptchaToken] = useState<string>('');
   const turnstileRef = useRef<TurnstileWidgetHandle | null>(null);
 
@@ -35,40 +35,12 @@ const Auth = () => {
   });
 
   useEffect(() => {
-    // 1. Escutar por mudanças no estado de autenticação (PASSWORD_RECOVERY)
-    // O Supabase dispara esse evento quando o usuário clica no link de recuperação de senha.
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      console.log('🔔 Auth event:', event);
-      if (event === 'PASSWORD_RECOVERY') {
-        console.log('🚩 PASSWORD_RECOVERY detected via event');
-        setView('update-password');
-        localStorage.removeItem('2fa_verified');
-      }
-    });
-
-    // 2. Fallback: Checar URL inicial para type=recovery
-    // Útil se o evento onAuthStateChange já tiver disparado antes do componente montar.
-    const hash = window.location.hash;
-    const searchParams = new URLSearchParams(location.search);
-    const isRecovery = hash.includes('type=recovery') || 
-                       hash.includes('access_token=') || 
-                       searchParams.get('type') === 'recovery';
-
-    if (isRecovery) {
-      console.log('🚩 Recovery detected via hash/search');
-      setView('update-password');
-      localStorage.removeItem('2fa_verified');
-    }
-
-    // 3. Redirecionar para dashboard apenas em fluxos de login normais
-    // Se estivermos em recuperação ou atualizando senha, bloqueamos o redirecionamento global.
+    // Redirecionar para dashboard apenas em fluxos de login normais
     const is2FAVerified = localStorage.getItem('2fa_verified') === 'true';
-    if (user && !isExonerated && is2FAVerified && view === 'login' && !isRecovery) {
+    if (user && !isExonerated && is2FAVerified && view === 'login') {
       navigate('/dashboard');
     }
-
-    return () => subscription.unsubscribe();
-  }, [user, navigate, isExonerated, location.search, location.hash]);
+  }, [user, navigate, isExonerated, view]);
 
   const validateForm = () => {
     if (view !== 'update-password' && !formData.email.trim()) {
@@ -82,16 +54,6 @@ const Auth = () => {
     if (view === '2fa' && formData.code.length !== 6) {
       setError('O código deve ter 6 dígitos');
       return false;
-    }
-    if (view === 'update-password') {
-      if (!formData.newPassword || formData.newPassword.length < 6) {
-        setError('A nova senha deve ter pelo menos 6 caracteres');
-        return false;
-      }
-      if (formData.newPassword !== formData.confirmPassword) {
-        setError('As senhas não coincidem');
-        return false;
-      }
     }
     
     if (view !== 'update-password') {
@@ -207,33 +169,6 @@ const Auth = () => {
       } finally {
         setLoading(false);
       }
-    } else if (view === 'update-password') {
-      setLoading(true);
-      try {
-        const { error } = await supabase.auth.updateUser({
-          password: formData.newPassword
-        });
-
-        if (error) {
-          setError(error.message);
-          return;
-        }
-
-        toast({
-          title: 'Senha atualizada!',
-          description: 'Sua senha foi alterada com sucesso.'
-        });
-        
-        // Após resetar senha, por segurança, pede login novamente
-        setMessage('Senha alterada! Faça login com sua nova senha.');
-        setView('login');
-        setFormData({ ...formData, password: '', newPassword: '', confirmPassword: '' });
-      } catch (err) {
-        setError('Erro ao atualizar senha.');
-      } finally {
-        setLoading(false);
-      }
-    }
   };
 
   if (user && session && localStorage.getItem('2fa_verified') === 'true' && view === 'login') {
@@ -248,7 +183,6 @@ const Auth = () => {
     switch (view) {
       case '2fa': return 'Verificação de Segurança';
       case 'forgot-password': return 'Recuperar Senha';
-      case 'update-password': return 'Nova Senha';
       default: return 'Acesse sua conta';
     }
   };
@@ -376,44 +310,6 @@ const Auth = () => {
                     </div>
                   )}
 
-                  {view === 'update-password' && (
-                    <>
-                      <div className="space-y-2">
-                        <Label htmlFor="new-password" className="text-[11px] font-medium text-white/40 ml-1">
-                          Nova Senha
-                        </Label>
-                        <div className="relative group">
-                          <Input
-                            id="new-password"
-                            type="password"
-                            placeholder="••••••••"
-                            value={formData.newPassword}
-                            onChange={(e) => setFormData({ ...formData, newPassword: e.target.value })}
-                            className="h-12 bg-white/[0.02] border-white/5 rounded-lg focus:border-white/20 focus:ring-0 transition-all text-white placeholder:text-white/10"
-                            disabled={loading}
-                            required
-                          />
-                        </div>
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="confirm-password" className="text-[11px] font-medium text-white/40 ml-1">
-                          Confirmar Nova Senha
-                        </Label>
-                        <div className="relative group">
-                          <Input
-                            id="confirm-password"
-                            type="password"
-                            placeholder="••••••••"
-                            value={formData.confirmPassword}
-                            onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
-                            className="h-12 bg-white/[0.02] border-white/5 rounded-lg focus:border-white/20 focus:ring-0 transition-all text-white placeholder:text-white/10"
-                            disabled={loading}
-                            required
-                          />
-                        </div>
-                      </div>
-                    </>
-                  )}
 
                   <Button
                     type="submit"
@@ -427,7 +323,6 @@ const Auth = () => {
                         {view === 'login' && 'Autenticar'}
                         {view === '2fa' && 'Confirmar código'}
                         {view === 'forgot-password' && 'Solicitar link'}
-                        {view === 'update-password' && 'Salvar nova senha'}
                         <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
                       </>
                     )}
@@ -450,7 +345,7 @@ const Auth = () => {
                     </div>
                   )}
 
-                  {(view === '2fa' || view === 'forgot-password' || view === 'update-password') && (
+                  {(view === '2fa' || view === 'forgot-password') && (
                     <Button 
                       variant="link" 
                       className="w-full text-xs text-white/40 hover:text-white"
