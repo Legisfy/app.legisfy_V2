@@ -122,11 +122,23 @@ const Auth = () => {
           .eq('email', formData.email.toLowerCase().trim())
           .eq('code', formData.code)
           .eq('used', false)
-          .gt('expires_at', new Date().toISOString())
+          .order('created_at', { ascending: false })
+          .limit(1)
           .maybeSingle();
 
         if (codeError || !codeData) {
-          setError('Código inválido ou expirado.');
+          setError('Código inválido ou já utilizado.');
+          setLoading(false);
+          return;
+        }
+
+        // Verificar expiração com margem de 10 minutos (mais generoso)
+        const expirationDate = new Date(codeData.expires_at);
+        const now = new Date();
+        const gracePeriod = 10 * 60 * 1000; // 10 minutos
+        
+        if (now.getTime() > expirationDate.getTime() + gracePeriod) {
+          setError('Este código expirou. Por favor, solicite um novo.');
           setLoading(false);
           return;
         }
