@@ -121,8 +121,8 @@ const AuthCallback = () => {
                             hashParams.get('type') === 'recovery';
 
           if (isRecovery) {
-            console.log('Recovery link detected in AuthCallback, redirecting to /auth');
-            navigate('/auth#type=recovery');
+            console.log('Recovery link detected in AuthCallback, redirecting to /auth with hash');
+            navigate(`/auth${window.location.hash}`);
             return;
           }
 
