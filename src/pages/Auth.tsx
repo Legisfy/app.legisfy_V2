@@ -35,37 +35,46 @@ const Auth = () => {
   });
 
   useEffect(() => {
-    // Escutar por mudanças no estado de autenticação para detectar recuperação de senha
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log('🔔 Auth state change:', event);
+    // 1. Escutar por mudanças no estado de autenticação (PASSWORD_RECOVERY)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      console.log('🔔 Auth event:', event);
       if (event === 'PASSWORD_RECOVERY') {
         setView('update-password');
         localStorage.removeItem('2fa_verified');
       }
     });
 
-    // Detectar fluxo de recuperação de senha pelo hash ou query params do Supabase (Fallback)
-    const hashParams = new URLSearchParams(window.location.hash.substring(1));
-    const isRecovery = window.location.hash.includes('type=recovery') || 
-                       window.location.hash.includes('access_token=') ||
-                       new URLSearchParams(location.search).get('type') === 'recovery' ||
-                       hashParams.get('type') === 'recovery';
+    // 2. Fallback: Checar URL inicial para type=recovery
+    const checkRecovery = () => {
+      const hashParams = new URLSearchParams(window.location.hash.substring(1));
+      const hasRecoveryToken = window.location.hash.includes('access_token=') || 
+                               window.location.hash.includes('type=recovery') ||
+                               hashParams.get('type') === 'recovery';
+      
+      const searchParams = new URLSearchParams(location.search);
+      const isRecoverySearch = searchParams.get('type') === 'recovery';
 
-    if (isRecovery) {
-      setView('update-password');
-      localStorage.removeItem('2fa_verified');
-    }
-
-    // Se o usuário estiver logado E com 2FA verificado, vai para o dashboard
-    const is2FAVerified = localStorage.getItem('2fa_verified') === 'true';
-    if (user && !isExonerated && is2FAVerified && view !== 'update-password') {
-      navigate('/dashboard');
-    }
-
-    return () => {
-      subscription.unsubscribe();
+      if (hasRecoveryToken || isRecoverySearch) {
+        console.log('🚩 Recovery detected via URL');
+        setView('update-password');
+        localStorage.removeItem('2fa_verified');
+        return true;
+      }
+      return false;
     };
-  }, [user, navigate, isExonerated, location, view]);
+
+    const isRecovering = checkRecovery();
+
+    // 3. Redirecionar para dashboard apenas se estiver logado, verificado e NÃO estiver em recuperação
+    if (!isRecovering && user && !isExonerated) {
+      const is2FAVerified = localStorage.getItem('2fa_verified') === 'true';
+      if (is2FAVerified && view === 'login') {
+        navigate('/dashboard');
+      }
+    }
+
+    return () => subscription.unsubscribe();
+  }, [user, navigate, isExonerated, location.search, location.hash]);
 
   const validateForm = () => {
     if (view !== 'update-password' && !formData.email.trim()) {
