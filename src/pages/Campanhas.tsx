@@ -89,16 +89,27 @@ const Campanhas = () => {
   return (
     <AppLayout>
       <div className="p-4 md:p-8 space-y-8 max-w-[1600px] mx-auto animate-in fade-in duration-500">
+        {/* Header Section */}
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold">Campanhas de WhatsApp</h1>
-            <p className="text-muted-foreground">
+            <div className="flex items-center gap-2 mb-0.5">
+              <h1 className="text-base font-bold tracking-tight text-foreground/80 font-outfit uppercase">Campanhas de WhatsApp</h1>
+              <Badge variant="outline" className="h-4 px-1.5 text-[7px] font-bold border-border/60 text-muted-foreground bg-transparent uppercase tracking-[0.2em] rounded-full">
+                Marketing Digital
+              </Badge>
+            </div>
+            <p className="text-[9px] text-muted-foreground/40 font-medium uppercase tracking-widest leading-none">
               Envie mensagens personalizadas para grupos específicos de eleitores
             </p>
           </div>
-          <Button onClick={() => setCreateModalOpen(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Nova Campanha
+
+          <Button
+            onClick={() => setCreateModalOpen(true)}
+            variant="success"
+            className="h-10 px-4 gap-2 rounded-xl font-bold text-xs uppercase tracking-wider shadow-lg shadow-emerald-500/10 hover:shadow-emerald-500/20 transition-all active:scale-95"
+          >
+            <Plus className="h-4 w-4" />
+            <span className="hidden sm:inline">Nova Campanha</span>
           </Button>
         </div>
 

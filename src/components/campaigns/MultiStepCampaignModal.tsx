@@ -36,8 +36,7 @@ const STEPS = [
   { id: 3, title: "Agendamento", icon: Clock },
   { id: 4, title: "Público", icon: Users },
   { id: 5, title: "Mensagem", icon: MessageSquare },
-  { id: 6, title: "Coleta", icon: Beaker },
-  { id: 7, title: "Preview", icon: Eye },
+  { id: 6, title: "Preview", icon: Eye },
 ];
 
 export const MultiStepCampaignModal = ({ open, onOpenChange }: MultiStepCampaignModalProps) => {
@@ -236,9 +235,6 @@ export const MultiStepCampaignModal = ({ open, onOpenChange }: MultiStepCampaign
       case 5:
         return message.trim() !== "";
       case 6:
-        if (!collectDataEnabled) return true;
-        return collectDataLabel.trim() !== "" && collectDataVariable.trim() !== "" && collectDataTrigger.trim() !== "";
-      case 7:
         return true;
       default:
         return false;
@@ -535,74 +531,6 @@ export const MultiStepCampaignModal = ({ open, onOpenChange }: MultiStepCampaign
         );
 
       case 6:
-        return (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between mb-4">
-              <Label htmlFor="collect-data" className="text-base font-semibold">
-                Quero coletar dados customizados
-              </Label>
-              <input
-                type="checkbox"
-                id="collect-data"
-                checked={collectDataEnabled}
-                onChange={(e) => setCollectDataEnabled(e.target.checked)}
-                className="h-5 w-5 rounded border-gray-300"
-              />
-            </div>
-
-            {collectDataEnabled && (
-              <div className="space-y-4 p-4 border rounded-lg bg-muted/30">
-                <div className="space-y-2">
-                  <Label htmlFor="data-label">Qual dado está coletando? *</Label>
-                  <Input
-                    id="data-label"
-                    value={collectDataLabel}
-                    onChange={(e) => setCollectDataLabel(e.target.value)}
-                    placeholder="Ex: Time de Futebol"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Descrição do dado que será coletado
-                  </p>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="data-variable">Variável *</Label>
-                  <Input
-                    id="data-variable"
-                    value={collectDataVariable}
-                    onChange={(e) => setCollectDataVariable(e.target.value)}
-                    placeholder="Ex: times"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Nome da variável para usar nas mensagens (sem chaves)
-                  </p>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="data-trigger">Quando coletar? *</Label>
-                  <Textarea
-                    id="data-trigger"
-                    value={collectDataTrigger}
-                    onChange={(e) => setCollectDataTrigger(e.target.value)}
-                    placeholder="Ex: quando o eleitor responder a pergunta de qual time ele torce"
-                    rows={3}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Descreva em que momento esse dado deve ser coletado
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {!collectDataEnabled && (
-              <p className="text-sm text-muted-foreground text-center p-8 border rounded-lg border-dashed">
-                Ative a coleta de dados para configurar variáveis personalizadas
-              </p>
-            )}
-          </div>
-        );
-
-      case 7:
         return (
           <div className="space-y-4">
             <div className="text-center mb-4">
