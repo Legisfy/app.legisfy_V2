@@ -98,14 +98,14 @@ export const MultiStepCampaignModal = ({ open, onOpenChange }: MultiStepCampaign
     enabled: !!activeInstitution?.cabinet_id,
   });
 
-  // Query to fetch tags
+  // Query to fetch tags from gabinete_custom_tags
   const { data: tags } = useQuery({
-    queryKey: ["eleitor-tags", activeInstitution?.cabinet_id],
+    queryKey: ["gabinete-custom-tags", activeInstitution?.cabinet_id],
     queryFn: async () => {
       if (!activeInstitution?.cabinet_id) return [];
       
       const { data, error } = await supabase
-        .from("eleitor_tags")
+        .from("gabinete_custom_tags")
         .select("*")
         .eq("gabinete_id", activeInstitution.cabinet_id);
       

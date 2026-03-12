@@ -103,14 +103,6 @@ const Campanhas = () => {
             </p>
           </div>
 
-          <Button
-            onClick={() => setCreateModalOpen(true)}
-            variant="success"
-            className="h-10 px-4 gap-2 rounded-xl font-bold text-xs uppercase tracking-wider shadow-lg shadow-emerald-500/10 hover:shadow-emerald-500/20 transition-all active:scale-95"
-          >
-            <Plus className="h-4 w-4" />
-            <span className="hidden sm:inline">Nova Campanha</span>
-          </Button>
         </div>
 
         <div className="flex gap-2 justify-end">
