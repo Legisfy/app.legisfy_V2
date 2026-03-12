@@ -127,11 +127,18 @@ const AuthCallback = () => {
           }
 
           // Regular signup/login
-          toast({
-            title: "Autenticação realizada!",
-            description: "Redirecionando..."
-          });
-          navigate('/dashboard');
+          const is2FAVerified = localStorage.getItem('2fa_verified') === 'true';
+          
+          if (is2FAVerified) {
+            toast({
+              title: "Autenticação realizada!",
+              description: "Redirecionando..."
+            });
+            navigate('/dashboard');
+          } else {
+            console.log('2FA not verified in AuthCallback, redirecting to /auth');
+            navigate('/auth');
+          }
         }
       } catch (error: any) {
         console.error('Callback processing error:', error);

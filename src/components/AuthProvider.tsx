@@ -209,8 +209,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(session?.user ?? null);
         setLoading(false);
 
-        // Reset exoneration state on sign out
+        // Reset exoneration state and 2FA on sign out
         if (!session) {
+          localStorage.removeItem('2fa_verified');
           setIsExonerated(false);
           setIsSuspended(false);
         }
@@ -346,8 +347,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
 
         // 3. Fallback: Member Check (using gabinete_members)
-        // Note: casting to any to bypass lint error if types are missing gabinete_members
-        const { data: memberData } = await (supabase.from('gabinete_members' as any) as any)
+        // Note: casting        // Fallback manually if RPC is not available or doesn't return data
+        const { data: memberData } = await (supabase.from('gabinete_usuarios' as any) as any)
           .select(`
             gabinete_id,
             role,

@@ -10,7 +10,7 @@ interface AuthGuardProps {
 const AuthGuardSimples = ({ children }: AuthGuardProps) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, loading } = useAuthContext();
+  const { user, loading, isSuspended } = useAuthContext();
 
   // Debug auth state
   console.log('🛡️ AuthGuardSimples - user:', !!user, 'loading:', loading, 'path:', location.pathname, 'user details:', user?.email);
@@ -79,7 +79,7 @@ const AuthGuardSimples = ({ children }: AuthGuardProps) => {
   const publicPaths = ['/auth', '/onboarding', '/politico-onboarding', '/admin-auth', '/convite/aceitar', '/aceitar-convite-equipe'];
   const is2FAVerified = localStorage.getItem('2fa_verified') === 'true';
 
-  if (publicPaths.includes(location.pathname) || (user && is2FAVerified)) {
+  if (publicPaths.includes(location.pathname) || (user && is2FAVerified && !isSuspended)) {
     return <>{children}</>;
   }
 
