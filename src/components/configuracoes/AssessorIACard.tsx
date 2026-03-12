@@ -225,24 +225,24 @@ export const AssessorIACard = () => {
         <CardContent className="p-0">
           <div className="flex flex-col lg:flex-row">
             {/* Esquerda: Visual e Dica */}
-            <div className="lg:w-80 bg-zinc-900/50 border-r border-border/50 flex flex-col relative overflow-hidden min-h-[400px]">
-              <div className="relative z-10 p-5 pb-0 space-y-2">
-                <div className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-zinc-800/60 rounded-full border border-zinc-700/40">
-                  <div className="w-1.5 h-1.5 bg-zinc-400 rounded-full animate-pulse" />
-                  <span className="text-[9px] font-bold text-zinc-400 tracking-widest uppercase">IA Legislativa</span>
+            <div className="lg:w-64 bg-zinc-900/50 border-r border-border/50 flex flex-col relative overflow-hidden">
+              <div className="relative z-10 p-5 pb-0 space-y-1.5">
+                <div className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-zinc-800/60 rounded-full border border-zinc-700/40">
+                  <div className="w-1 h-1 bg-zinc-400 rounded-full animate-pulse" />
+                  <span className="text-[8px] font-bold text-zinc-400 tracking-widest uppercase">IA Legislativa</span>
                 </div>
-                <h2 className="text-xl font-extrabold text-zinc-200 tracking-tight leading-tight">
+                <h2 className="text-lg font-extrabold text-zinc-200 tracking-tight leading-tight">
                   Meu <span className="text-zinc-300">Assessor IA</span>
                 </h2>
-                <p className="text-zinc-500 text-[11px] leading-relaxed">
-                  Um verdadeiro assessor de inteligência artificial que atua dentro do seu WhatsApp.
+                <p className="text-zinc-500 text-[10px] leading-relaxed">
+                  Trabalhando 24/7 diretamente no seu WhatsApp.
                 </p>
               </div>
 
-              <div className="h-64 lg:h-80 relative flex items-center justify-center overflow-hidden flex-1">
+              <div className="h-48 lg:h-56 relative flex items-center justify-center overflow-hidden flex-1 scale-90">
                 <Suspense fallback={
                   <div className="flex items-center justify-center h-full">
-                    <Bot className="h-20 w-20 text-zinc-700 animate-pulse" />
+                    <Bot className="h-12 w-12 text-zinc-700 animate-pulse" />
                   </div>
                 }>
                   <Spline
@@ -253,12 +253,12 @@ export const AssessorIACard = () => {
               </div>
 
               <div className="relative z-10 px-5 pb-5">
-                <div className="bg-zinc-800/40 border border-zinc-700/30 p-2.5 rounded-lg">
-                  <div className="flex items-center gap-1.5 mb-1">
-                    <Lightbulb className="h-3 w-3 text-zinc-400" />
-                    <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">Dica</span>
+                <div className="bg-zinc-800/40 border border-zinc-700/30 p-2 rounded-lg">
+                  <div className="flex items-center gap-1 mb-1">
+                    <Lightbulb className="h-2.5 w-2.5 text-zinc-400" />
+                    <span className="text-[8px] font-bold text-zinc-400 uppercase tracking-wider">Dica</span>
                   </div>
-                  <p className="text-zinc-400 text-[10px] leading-relaxed">
+                  <p className="text-zinc-400 text-[9px] leading-relaxed">
                     Personalize o comportamento para que ele responda com a voz do seu mandato.
                   </p>
                 </div>
@@ -266,95 +266,95 @@ export const AssessorIACard = () => {
             </div>
 
             {/* Direita: Configurações e Conexão */}
-            <div className="flex-1 p-5 lg:p-6 space-y-8">
+            <div className="flex-1 p-5 lg:p-6 space-y-6">
               
               {/* Seção 1: Identidade e Personalidade */}
-              <div className="space-y-4">
-                <div className="flex items-center gap-2.5 pb-2 border-b border-border/50">
-                  <Settings2 className="h-4 w-4 text-primary" />
-                  <h3 className="text-sm font-bold text-foreground">Personalidade e Escopo</h3>
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 pb-1.5 border-b border-border/50">
+                  <Settings2 className="h-3.5 w-3.5 text-primary" />
+                  <h3 className="text-xs font-bold text-foreground">Personalidade e Escopo</h3>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-1.5">
-                    <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Nome do Assessor</Label>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Nome do Assessor</Label>
                     <Input
                       placeholder="Ex: Maria Assessora"
                       value={nome}
                       onChange={(e) => setNome(e.target.value)}
-                      className="h-10 text-sm bg-zinc-900/20"
+                      className="h-8 text-xs bg-zinc-900/20"
                     />
                   </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Número Oficial</Label>
+                  <div className="space-y-1">
+                    <Label className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Número Oficial</Label>
                     <Input
                       placeholder="Ex: 5511999999999"
                       value={whatsappNumber}
                       onChange={(e) => setWhatsappNumber(e.target.value)}
-                      className="h-10 text-sm font-mono bg-zinc-900/20"
+                      className="h-8 text-xs font-mono bg-zinc-900/20"
                     />
                   </div>
                 </div>
 
-                <div className="space-y-1.5">
-                  <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Comportamento do Assessor</Label>
+                <div className="space-y-1">
+                  <Label className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Comportamento do Assessor</Label>
                   <Textarea
-                    placeholder="Como o assessor deve agir? (Ex: Cordial, focado em saúde, encaminhar demandas...)"
+                    placeholder="Como o assessor deve agir?"
                     value={comportamento}
                     onChange={(e) => setComportamento(e.target.value)}
-                    className="min-h-[100px] text-sm resize-none bg-zinc-900/20"
+                    className="min-h-[80px] text-xs resize-none bg-zinc-900/20"
                   />
                 </div>
               </div>
 
               {/* Seção 2: Conexão WhatsApp Integrada */}
-              <div className="space-y-4">
-                <div className="flex items-center justify-between gap-2.5 pb-2 border-b border-border/50">
-                  <div className="flex items-center gap-2.5">
-                    <MessageSquare className="h-4 w-4 text-green-500" />
-                    <h3 className="text-sm font-bold text-foreground">Conexão WhatsApp</h3>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between gap-2 pb-1.5 border-b border-border/50">
+                  <div className="flex items-center gap-2">
+                    <MessageSquare className="h-3.5 w-3.5 text-green-500" />
+                    <h3 className="text-xs font-bold text-foreground">Conexão WhatsApp</h3>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Badge variant={whatsappEnabled ? "success" : "secondary"} className="text-[8px] uppercase font-bold">
+                    <Badge variant={whatsappEnabled ? "success" : "secondary"} className="text-[7px] uppercase font-bold">
                       {whatsappEnabled ? "Ativo" : "Inativo"}
                     </Badge>
                     <Switch 
                       checked={whatsappEnabled} 
                       onCheckedChange={setWhatsappEnabled}
-                      className="scale-75"
+                      className="scale-[0.6]"
                     />
                   </div>
                 </div>
 
-                <div className="flex flex-col md:flex-row gap-6 items-center">
-                  <div className="shrink-0 w-44 h-44 bg-white p-2.5 rounded-xl shadow-lg relative group overflow-hidden">
+                <div className="flex flex-col md:flex-row gap-4 items-center">
+                  <div className="shrink-0 w-32 h-32 bg-white p-2 rounded-lg shadow-lg relative group overflow-hidden">
                     {whatsappEnabled && apiUrl && apiKey ? (
                       <QrCode className="h-full w-full text-zinc-900" />
                     ) : (
                       <div className="h-full w-full flex items-center justify-center opacity-20">
-                        <QrCode className="h-20 w-20 text-zinc-400" />
+                        <QrCode className="h-14 w-14 text-zinc-400" />
                       </div>
                     )}
                     {(!whatsappEnabled || !apiUrl || !apiKey) && (
-                      <div className="absolute inset-0 bg-black/80 flex flex-col items-center justify-center p-3 text-center">
-                        <AlertCircle className="h-6 w-6 text-amber-500 mb-1" />
-                        <p className="text-[9px] font-bold text-zinc-200 uppercase leading-snug">
+                      <div className="absolute inset-0 bg-black/80 flex flex-col items-center justify-center p-2 text-center">
+                        <AlertCircle className="h-5 w-5 text-amber-500 mb-1" />
+                        <p className="text-[8px] font-bold text-zinc-200 uppercase leading-tight">
                           Salve para <br /> conectar
                         </p>
                       </div>
                     )}
                   </div>
 
-                  <div className="flex-1 space-y-4 w-full">
-                    <div className="space-y-2">
-                      <p className="text-xs font-bold text-zinc-400 uppercase tracking-tighter">Status da Conexão</p>
-                      <div className="flex items-center gap-2">
+                  <div className="flex-1 space-y-3 w-full">
+                    <div className="space-y-1">
+                      <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-tighter">Status da Conexão</p>
+                      <div className="flex items-center gap-1.5">
                         <div className={cn(
-                          "h-2 w-2 rounded-full",
+                          "h-1.5 w-1.5 rounded-full",
                           whatsappEnabled ? "bg-green-500 animate-pulse" : "bg-amber-500"
                         )} />
                         <span className={cn(
-                          "text-[10px] font-bold uppercase tracking-widest",
+                          "text-[9px] font-bold uppercase tracking-widest",
                           whatsappEnabled ? "text-green-500" : "text-amber-500"
                         )}>
                           {whatsappEnabled ? "Operando / Conectado" : "Aguardando Ativação"}
@@ -364,51 +364,41 @@ export const AssessorIACard = () => {
 
                     <Collapsible open={showAdvanced} onOpenChange={setShowAdvanced} className="border border-border/40 rounded-lg overflow-hidden bg-muted/5">
                       <CollapsibleTrigger asChild>
-                        <Button variant="ghost" size="sm" className="w-full flex items-center justify-between px-3 py-2 h-auto text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
+                        <Button variant="ghost" size="sm" className="w-full flex items-center justify-between px-2 py-1.5 h-auto text-[8px] font-bold uppercase tracking-widest text-muted-foreground">
                           Configurações Técnicas
-                          {showAdvanced ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                          {showAdvanced ? <ChevronUp className="h-2.5 w-2.5" /> : <ChevronDown className="h-2.5 w-2.5" />}
                         </Button>
                       </CollapsibleTrigger>
-                      <CollapsibleContent className="p-3 border-t border-border/40 space-y-3">
+                      <CollapsibleContent className="p-2 border-t border-border/40 space-y-2">
                         <div className="grid grid-cols-2 gap-2">
                           <div className="space-y-1">
-                            <Label className="text-[8px] uppercase tracking-wider text-muted-foreground">Provedor</Label>
+                            <Label className="text-[7px] uppercase tracking-wider text-muted-foreground">Provedor</Label>
                             <select 
                               value={provider} 
                               onChange={(e) => setProvider(e.target.value)} 
-                              className="w-full h-8 bg-background border border-border rounded px-2 text-[10px]"
+                              className="w-full h-7 bg-background border border-border rounded px-1.5 text-[9px]"
                             >
                               <option value="evolution">Evolution API</option>
                               <option value="zapi">Z-API</option>
                             </select>
                           </div>
                           <div className="space-y-1">
-                            <Label className="text-[8px] uppercase tracking-wider text-muted-foreground">Instância</Label>
+                            <Label className="text-[7px] uppercase tracking-wider text-muted-foreground">Instância</Label>
                             <Input 
-                              placeholder="gabinete-id" 
+                              placeholder="ID" 
                               value={instanceName} 
                               onChange={(e) => setInstanceName(e.target.value)}
-                              className="h-8 text-[10px]" 
+                              className="h-7 text-[9px]" 
                             />
                           </div>
                         </div>
-                        <div className="space-y-1">
-                          <Label className="text-[8px] uppercase tracking-wider text-muted-foreground">URL da API</Label>
+                        <div className="space-y-0.5">
+                          <Label className="text-[7px] uppercase tracking-wider text-muted-foreground">URL</Label>
                           <Input 
-                            placeholder="https://sua-api.com" 
+                            placeholder="https://..." 
                             value={apiUrl} 
                             onChange={(e) => setApiUrl(e.target.value)}
-                            className="h-8 text-[10px]" 
-                          />
-                        </div>
-                        <div className="space-y-1">
-                          <Label className="text-[8px] uppercase tracking-wider text-muted-foreground">API Token/Key</Label>
-                          <Input 
-                            type="password" 
-                            placeholder="Seu Token" 
-                            value={apiKey} 
-                            onChange={(e) => setApiKey(e.target.value)}
-                            className="h-8 text-[10px]" 
+                            className="h-7 text-[9px]" 
                           />
                         </div>
                       </CollapsibleContent>
@@ -417,25 +407,25 @@ export const AssessorIACard = () => {
                 </div>
               </div>
 
-              {/* Seção 3: Atividades (Grid Expandido) */}
-              <div className="space-y-4">
-                <div className="flex items-center gap-2.5 pb-2 border-b border-border/50">
-                  <Check className="h-4 w-4 text-emerald-500" />
-                  <h3 className="text-sm font-bold text-foreground">Capacidades do Assessor</h3>
+              {/* Seção 3: Atividades (Grid Compacto) */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 pb-1 border-b border-border/50">
+                  <Check className="h-3.5 w-3.5 text-emerald-500" />
+                  <h3 className="text-xs font-bold text-foreground">Capacidades</h3>
                 </div>
 
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
                   {IA_ACTIVITIES.map((activity) => {
                     const Icon = activity.icon;
                     return (
                       <div
                         key={activity.id}
-                        className="flex flex-col items-center justify-center p-3 rounded-xl border border-zinc-800/50 bg-[#0a0a0a] transition-all hover:bg-zinc-900/50 text-center space-y-1.5 group"
+                        className="flex items-center gap-2 p-2 rounded-lg border border-zinc-800/50 bg-[#0a0a0a] transition-all hover:bg-zinc-900/50 group"
                       >
-                        <div className={`h-8 w-8 ${activity.bg} rounded-full flex items-center justify-center transition-transform group-hover:scale-110`}>
-                          <Icon className={`h-4 w-4 ${activity.color}`} />
+                        <div className={`h-6 w-6 flex-shrink-0 ${activity.bg} rounded flex items-center justify-center transition-transform group-hover:scale-105`}>
+                          <Icon className={`h-3 w-3 ${activity.color}`} />
                         </div>
-                        <p className="text-[9px] font-bold text-zinc-300 leading-tight uppercase tracking-tight">{activity.name}</p>
+                        <p className="text-[8px] font-bold text-zinc-300 leading-tight uppercase tracking-tighter truncate">{activity.name}</p>
                       </div>
                     );
                   })}
@@ -443,20 +433,20 @@ export const AssessorIACard = () => {
               </div>
 
               {/* Botão Salvar Geral */}
-              <div className="flex items-center justify-between pt-6 border-t border-border/50">
+              <div className="flex items-center justify-between pt-4 border-t border-border/50">
                 <div className="flex items-center gap-1.5">
                   {existingAssessor && (
-                    <span className="text-[9px] text-emerald-600 font-medium flex items-center gap-1">
-                      <Check className="h-3 w-3" /> Assessor pronto para operar
+                    <span className="text-[8px] text-emerald-600 font-medium flex items-center gap-1">
+                      <Check className="h-2.5 w-2.5" /> Assessor Operacional
                     </span>
                   )}
                 </div>
                 <Button
                   onClick={handleSalvarTudo}
-                  className="h-10 px-8 text-xs font-bold rounded-xl shadow-lg shadow-primary/20 transition-all hover:translate-y-[-1px]"
+                  className="h-8 px-5 text-[10px] font-bold rounded-lg shadow-lg shadow-primary/20 transition-all hover:translate-y-[-1px]"
                   disabled={isSubmitting}
                 >
-                  {isSubmitting ? <Loader2 className="animate-spin h-4 w-4 mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+                  {isSubmitting ? <Loader2 className="animate-spin h-3 w-3 mr-2" /> : <Save className="h-3 w-3 mr-2" />}
                   Salvar Configurações
                 </Button>
               </div>
