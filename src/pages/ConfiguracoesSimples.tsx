@@ -5,7 +5,6 @@ import { GabineteAssinaturaCard } from "@/components/configuracoes/GabineteAssin
 import { useAuthContext } from "@/components/AuthProvider";
 import { Briefcase, Settings } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { WhatsAppConfigCard } from "@/components/configuracoes/WhatsAppConfigCard";
 import { AssessorIACard } from "@/components/configuracoes/AssessorIACard";
 import { DocumentTemplatesCard } from "@/components/configuracoes/DocumentTemplatesCard";
 
@@ -66,10 +65,6 @@ export default function ConfiguracoesSimples() {
               <PremiacoesCard />
             </div>
             
-            {/* Integração WhatsApp Dedicado */}
-            <div className="col-span-full">
-              <WhatsAppConfigCard />
-            </div>
 
             {/* Meu Assessor IA */}
             <div className="col-span-full">
