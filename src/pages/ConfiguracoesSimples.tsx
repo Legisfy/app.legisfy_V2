@@ -76,10 +76,7 @@ export default function ConfiguracoesSimples() {
               <AssessorIACard />
             </div>
 
-            {/* Modelos Inteligentes de Documentos */}
-            <div className="col-span-full">
-              <DocumentTemplatesCard />
-            </div>
+            {/* Modelos Inteligentes de Documentos removido a pedido do usuário */}
           </TabsContent>
 
           <TabsContent value="assinatura" className="animate-in fade-in-50 slide-in-from-bottom-5 duration-400">

@@ -61,23 +61,23 @@ export const WhatsAppPreview = ({ message, agentName = "Assessor IA", agentPhoto
           </Avatar>
           
           <div className="flex-1">
-            <div className="bg-white rounded-lg rounded-tl-none shadow-sm p-3 relative">
-              <div className="text-xs font-semibold text-primary mb-1">
+            <div className="bg-[#FFFFFF] dark:bg-[#0B141A] rounded-lg rounded-tl-none shadow-sm p-3 relative">
+              <div className="text-xs font-semibold text-[#00A884] mb-1">
                 {agentName}
               </div>
               
               {message ? (
-                <p className="text-sm text-foreground whitespace-pre-wrap break-words">
+                <p className="text-sm text-[#111B21] dark:text-[#E9EDEF] whitespace-pre-wrap break-words">
                   {renderMessage()}
                 </p>
               ) : (
-                <p className="text-sm text-muted-foreground italic">
+                <p className="text-sm text-[#667781] dark:text-[#8696A0] italic">
                   Digite sua mensagem para visualizar aqui...
                 </p>
               )}
               
               <div className="flex items-center justify-end mt-1 space-x-1">
-                <span className="text-[10px] text-muted-foreground">
+                <span className="text-[10px] text-[#667781] dark:text-[#8696A0]">
                   {new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                 </span>
               </div>

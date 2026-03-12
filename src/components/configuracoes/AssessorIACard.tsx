@@ -1,73 +1,43 @@
-import { Bot, Loader2, Lightbulb, Send, Mail, Calendar, FileText, MessageSquare, Settings2, Check } from "lucide-react";
+import { Bot, Loader2, Lightbulb, Send, Calendar, MessageSquare, Settings2, Check } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Switch } from "@/components/ui/switch";
 import { useState, useEffect, Suspense, lazy } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuthContext } from "@/components/AuthProvider";
 import { AssessorIAConfirmationModal } from "@/components/modals/AssessorIAConfirmationModal";
+import { Badge } from "@/components/ui/badge";
 
 const Spline = lazy(() => import('@splinetool/react-spline'));
 
-// Ferramentas disponíveis para o Assessor IA
-const AVAILABLE_TOOLS = [
+// Atividades que o Assessor IA realiza
+const IA_ACTIVITIES = [
   {
-    id: 'whatsapp',
-    name: 'WhatsApp',
-    description: 'Atendimento via WhatsApp Dedicado',
+    id: 'atendimento',
+    name: 'Atende Eleitores',
+    description: 'Responde dúvidas e faz triagem via WhatsApp',
     icon: MessageSquare,
     color: 'text-green-500',
     bg: 'bg-green-500/10',
-    required: false,
   },
   {
-    id: 'telegram',
-    name: 'Telegram Bot',
-    description: 'Atendimento via Telegram',
-    icon: Send,
-    color: 'text-sky-500',
-    bg: 'bg-sky-500/10',
-    required: false,
-  },
-  {
-    id: 'gmail',
-    name: 'Gmail',
-    description: 'Leitura e envio de e-mails',
-    icon: Mail,
-    color: 'text-red-500',
-    bg: 'bg-red-500/10',
-    required: false,
-  },
-  {
-    id: 'google_calendar',
-    name: 'Google Agenda',
-    description: 'Criar e consultar eventos',
+    id: 'agenda',
+    name: 'Lembretes de Agenda',
+    description: 'Avisa sobre compromissos e reuniões',
     icon: Calendar,
     color: 'text-blue-500',
     bg: 'bg-blue-500/10',
-    required: false,
   },
   {
-    id: 'documentos',
-    name: 'Documentos',
-    description: 'Gerar indicações e ofícios',
-    icon: FileText,
-    color: 'text-emerald-500',
-    bg: 'bg-emerald-500/10',
-    required: false,
-  },
-  {
-    id: 'demandas',
-    name: 'Demandas',
-    description: 'Registrar e consultar demandas',
-    icon: MessageSquare,
-    color: 'text-purple-500',
-    bg: 'bg-purple-500/10',
-    required: false,
+    id: 'aniversariantes',
+    name: 'Aniversariantes',
+    description: 'Envia mensagens automáticas de parabéns',
+    icon: Lightbulb,
+    color: 'text-amber-500',
+    bg: 'bg-amber-500/10',
   },
 ];
 
@@ -75,15 +45,7 @@ export const AssessorIACard = () => {
   const { cabinet } = useAuthContext();
   const [nome, setNome] = useState("");
   const [comportamento, setComportamento] = useState("");
-  const [telegramToken, setTelegramToken] = useState("");
-  const [enabledTools, setEnabledTools] = useState<Record<string, boolean>>({
-    whatsapp: true,
-    telegram: false,
-    gmail: false,
-    google_calendar: false,
-    documentos: false,
-    demandas: false,
-  });
+  const [whatsappNumber, setWhatsappNumber] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showConfirmationModal, setShowConfirmationModal] = useState(false);
   const [existingAssessor, setExistingAssessor] = useState<any>(null);
@@ -106,7 +68,7 @@ export const AssessorIACard = () => {
           setExistingAssessor(data);
           setNome(data.nome);
           setComportamento(data.comportamento);
-          setTelegramToken(data.numero_whatsapp || ""); // reusing field for telegram
+          setWhatsappNumber(data.numero_whatsapp || "");
         }
       } catch (error) {
         console.error("Erro ao buscar assessor:", error);
@@ -116,12 +78,6 @@ export const AssessorIACard = () => {
     };
     loadExistingAssessor();
   }, [cabinet?.cabinet_id]);
-
-  const toggleTool = (toolId: string) => {
-    const tool = AVAILABLE_TOOLS.find(t => t.id === toolId);
-    if (tool?.required) return; // Não pode desligar ferramenta obrigatória
-    setEnabledTools(prev => ({ ...prev, [toolId]: !prev[toolId] }));
-  };
 
   const handleCriarAssessor = async () => {
     if (!nome.trim() || !comportamento.trim()) {
@@ -139,9 +95,9 @@ export const AssessorIACard = () => {
 
       const data_payload = {
         nome: nome.trim(),
-        comportamento: comportamento.trim(),
+        comportamento: comportamiento.trim(),
         mensagem_boas_vindas: `Olá! Eu sou ${nome.trim()}, seu assistente virtual. Como posso ajudar?`,
-        numero_whatsapp: telegramToken.trim(),
+        numero_whatsapp: whatsappNumber.trim(),
         gabinete_id: cabinet.cabinet_id,
         created_by: userId,
         status: 'em_aprendizado' as const,
@@ -164,7 +120,6 @@ export const AssessorIACard = () => {
       }
     } catch (error: any) {
       console.error("Erro ao salvar assessor:", error);
-      console.error("Detalhes:", error?.message, error?.details, error?.hint, error?.code);
       toast.error(`Erro ao salvar: ${error?.message || 'Erro desconhecido'}`);
     } finally {
       setIsSubmitting(false);
@@ -192,7 +147,6 @@ export const AssessorIACard = () => {
               <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-zinc-700/0 via-zinc-500/40 to-zinc-700/0" />
               <div className="absolute -bottom-16 -left-16 w-48 h-48 bg-zinc-500/5 rounded-full blur-[60px] pointer-events-none" />
 
-              {/* Título acima do robô */}
               <div className="relative z-10 p-5 pb-0 space-y-2">
                 <div className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-zinc-800/60 rounded-full border border-zinc-700/40">
                   <div className="w-1.5 h-1.5 bg-zinc-400 rounded-full animate-pulse" />
@@ -206,7 +160,6 @@ export const AssessorIACard = () => {
                 </p>
               </div>
 
-              {/* Robô 3D — maior */}
               <div className="h-64 lg:h-80 relative flex items-center justify-center overflow-hidden flex-1">
                 <Suspense fallback={
                   <div className="flex items-center justify-center h-full">
@@ -220,7 +173,6 @@ export const AssessorIACard = () => {
                 </Suspense>
               </div>
 
-              {/* Dica */}
               <div className="relative z-10 px-5 pb-5">
                 <div className="bg-zinc-800/40 border border-zinc-700/30 p-2.5 rounded-lg">
                   <div className="flex items-center gap-1.5 mb-1">
@@ -234,30 +186,39 @@ export const AssessorIACard = () => {
               </div>
             </div>
 
-            {/* Formulário + Ferramentas */}
+            {/* Formulário + Atividades */}
             <div className="flex-1 p-5 lg:p-6 space-y-5">
 
-              {/* Header do Form */}
               <div className="flex items-center gap-2.5 pb-3 border-b border-border">
                 <div className="h-8 w-8 bg-muted rounded-lg flex items-center justify-center">
                   <Settings2 className="h-4 w-4 text-primary" />
                 </div>
                 <div>
                   <h3 className="text-sm font-bold text-foreground">Configurar Assessor</h3>
-                  <p className="text-[10px] text-muted-foreground">Defina o nome, personalidade e ferramentas</p>
+                  <p className="text-[10px] text-muted-foreground">Defina o nome, personalidade e atividades</p>
                 </div>
               </div>
 
-              {/* Nome + Comportamento */}
-              <div className="space-y-3">
-                <div className="space-y-1.5">
-                  <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Nome do Assessor</Label>
-                  <Input
-                    placeholder="Ex: Maria Assessora"
-                    value={nome}
-                    onChange={(e) => setNome(e.target.value)}
-                    className="h-9 text-sm"
-                  />
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Nome do Assessor</Label>
+                    <Input
+                      placeholder="Ex: Maria Assessora"
+                      value={nome}
+                      onChange={(e) => setNome(e.target.value)}
+                      className="h-9 text-sm"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">WhatsApp de Contato</Label>
+                    <Input
+                      placeholder="Ex: 5511999999999"
+                      value={whatsappNumber}
+                      onChange={(e) => setWhatsappNumber(e.target.value)}
+                      className="h-9 text-sm font-mono"
+                    />
+                  </div>
                 </div>
 
                 <div className="space-y-1.5">
@@ -266,84 +227,43 @@ export const AssessorIACard = () => {
                     placeholder="Ex: Seja cordial e objetivo. Priorize demandas de saúde e educação. Encaminhe casos urgentes ao gabinete..."
                     value={comportamento}
                     onChange={(e) => setComportamento(e.target.value)}
-                    className="min-h-[80px] text-sm resize-none"
+                    className="min-h-[100px] text-sm resize-none"
                   />
                 </div>
-              </div>
 
-              {/* Ferramentas */}
-              <div className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Ferramentas Conectadas</Label>
-                  <span className="text-[9px] bg-primary/10 text-primary font-bold px-1.5 py-0.5 rounded">
-                    {Object.values(enabledTools).filter(Boolean).length} ativas
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  {AVAILABLE_TOOLS.map((tool) => {
-                    const Icon = tool.icon;
-                    const isEnabled = enabledTools[tool.id];
-                    return (
-                      <div
-                        key={tool.id}
-                        className={`flex items-center justify-between p-2.5 rounded-lg border transition-all cursor-pointer ${isEnabled
-                          ? 'border-primary/30 bg-primary/5'
-                          : 'border-border bg-muted/20 hover:bg-muted/40'
-                          } ${tool.required ? 'opacity-90' : ''}`}
-                        onClick={() => toggleTool(tool.id)}
-                      >
-                        <div className="flex items-center gap-2.5">
-                          <div className={`h-7 w-7 ${tool.bg} rounded-md flex items-center justify-center`}>
-                            <Icon className={`h-3.5 w-3.5 ${tool.color}`} />
+                {/* Atividades do Assessor */}
+                <div className="space-y-3 pt-2">
+                  <div className="flex items-center gap-2">
+                    <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Atividades Automatizadas</Label>
+                    <Badge variant="outline" className="text-[8px] border-emerald-500/20 text-emerald-500 bg-emerald-500/5 px-1.5 py-0 h-4">
+                      Via WhatsApp
+                    </Badge>
+                  </div>
+  
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    {IA_ACTIVITIES.map((activity) => {
+                      const Icon = activity.icon;
+                      return (
+                        <div
+                          key={activity.id}
+                          className="flex flex-col items-center justify-center p-4 rounded-xl border border-zinc-800/50 bg-[#0a0a0a] transition-all hover:border-zinc-700/50 text-center space-y-2 group"
+                        >
+                          <div className={`h-10 w-10 ${activity.bg} rounded-full flex items-center justify-center transition-transform group-hover:scale-110`}>
+                            <Icon className={`h-5 w-5 ${activity.color}`} />
                           </div>
                           <div>
-                            <p className="text-xs font-semibold text-foreground leading-none">{tool.name}</p>
-                            <p className="text-[9px] text-muted-foreground mt-0.5">{tool.description}</p>
+                            <p className="text-[11px] font-bold text-zinc-200 leading-tight">{activity.name}</p>
+                            <p className="text-[9px] text-zinc-500 mt-1 leading-relaxed hidden sm:block">{activity.description}</p>
                           </div>
                         </div>
-                        <div className="flex items-center gap-1.5">
-                          {tool.required && (
-                            <span className="text-[8px] font-bold text-primary uppercase tracking-wider">Obrigatório</span>
-                          )}
-                          <Switch
-                            checked={isEnabled}
-                            onCheckedChange={() => toggleTool(tool.id)}
-                            className="scale-75"
-                            disabled={tool.required}
-                          />
-                        </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
 
-              {/* Token Telegram (se habilitado) */}
-              {enabledTools.telegram && (
-                <div className="space-y-2.5 p-4 bg-[#0a0a0a] border border-zinc-800/50 rounded-xl">
-                  <div className="flex items-center gap-2">
-                    <div className="h-6 w-6 bg-zinc-800/60 rounded-md flex items-center justify-center">
-                      <Send className="h-3 w-3 text-zinc-400" />
-                    </div>
-                    <Label className="text-[10px] font-bold uppercase tracking-wider text-zinc-300">
-                      Token do Bot Telegram
-                    </Label>
-                  </div>
-                  <Input
-                    placeholder="Cole aqui o token do @BotFather"
-                    value={telegramToken}
-                    onChange={(e) => setTelegramToken(e.target.value)}
-                    className="h-9 text-sm font-mono bg-zinc-900 border-zinc-700/50 text-zinc-300 placeholder:text-zinc-600 text-xs"
-                  />
-                  <p className="text-[9px] text-zinc-500">
-                    Crie um bot no <span className="font-semibold text-zinc-400">@BotFather</span> do Telegram e cole o token aqui.
-                  </p>
-                </div>
-              )}
-
               {/* Botão Salvar */}
-              <div className="flex items-center justify-between pt-3 border-t border-border">
+              <div className="flex items-center justify-between pt-4 border-t border-border">
                 <div className="flex items-center gap-1.5">
                   {existingAssessor && (
                     <span className="text-[9px] text-emerald-600 font-medium flex items-center gap-1">
@@ -353,11 +273,11 @@ export const AssessorIACard = () => {
                 </div>
                 <Button
                   onClick={handleCriarAssessor}
-                  className="h-9 px-5 text-xs font-bold rounded-lg"
+                  className="h-10 px-6 text-xs font-bold rounded-xl shadow-lg shadow-primary/10 transition-all hover:translate-y-[-1px] active:translate-y-[0px]"
                   disabled={isSubmitting}
                 >
                   {isSubmitting ? <Loader2 className="animate-spin h-3.5 w-3.5 mr-2" /> : null}
-                  {existingAssessor ? 'Atualizar Assessor' : 'Salvar Assessor'}
+                  {existingAssessor ? 'Atualizar Assessor' : 'Criar Assessor IA'}
                 </Button>
               </div>
             </div>
@@ -368,7 +288,7 @@ export const AssessorIACard = () => {
       <AssessorIAConfirmationModal
         open={showConfirmationModal}
         onOpenChange={setShowConfirmationModal}
-        whatsappNumber={telegramToken}
+        whatsappNumber={whatsappNumber}
       />
     </>
   );
