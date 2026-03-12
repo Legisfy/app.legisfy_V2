@@ -162,8 +162,11 @@ export const AssessorIACard = () => {
 
     setIsSubmitting(true);
     try {
+      const { data: userData } = await supabase.auth.getUser();
+      const userId = userData.user?.id;
+
       // 1. Save Assessor
-      const assessorPayload = {
+      const assessorPayload: any = {
         gabinete_id: cabinet.cabinet_id,
         nome: nome.trim(),
         comportamento: comportamento.trim(),
@@ -175,6 +178,7 @@ export const AssessorIACard = () => {
       if (existingAssessor) {
         await supabase.from('meu_assessor_ia').update(assessorPayload).eq('id', existingAssessor.id);
       } else {
+        assessorPayload.created_by = userId;
         await supabase.from('meu_assessor_ia').insert([assessorPayload]);
       }
 
