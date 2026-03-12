@@ -23,10 +23,17 @@ export const PaymentHistoryModal: React.FC<PaymentHistoryModalProps> = ({
   const { data: paymentHistory = [], isLoading } = useQuery({
     queryKey: ['payment-history', gabineteId],
     queryFn: async () => {
-      console.log('Payment history requested for gabinete:', gabineteId);
-      return [];
+      if (!gabineteId) return [];
+      const { data, error } = await supabase
+        .from('payments')
+        .select('*')
+        .eq('gabinete_id', gabineteId)
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      return data;
     },
-    enabled: open && !!user && !!gabineteId,
+    enabled: !!user && !!gabineteId,
   });
 
   const formatCurrency = (value: number, currency: string = 'BRL') => {
