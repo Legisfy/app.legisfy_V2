@@ -9,6 +9,7 @@ interface AuthContextType {
   cabinet: {
     cabinet_id: string;
     cabinet_name: string;
+    status: string;
     city_name?: string;
     institution_name?: string;
     politician_name?: string;
@@ -16,6 +17,7 @@ interface AuthContextType {
   } | null;
   cabinetLoading: boolean;
   isExonerated: boolean;
+  isSuspended: boolean;
   signIn: (email: string, password: string, captchaToken?: string) => Promise<any>;
   signUp: (email: string, password: string, metadata?: any) => Promise<any>;
   signOut: () => Promise<any>;
@@ -31,6 +33,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [cabinet, setCabinet] = useState<{
     cabinet_id: string;
     cabinet_name: string;
+    status: string;
     city_name?: string;
     institution_name?: string;
     politician_name?: string;
@@ -38,6 +41,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   } | null>(null);
   const [cabinetLoading, setCabinetLoading] = useState(true);
   const [isExonerated, setIsExonerated] = useState(false);
+  const [isSuspended, setIsSuspended] = useState(false);
 
   // Auth methods
   const signIn = async (email: string, password: string, captchaToken?: string) => {
@@ -138,6 +142,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const { error } = await supabase.auth.signOut();
     localStorage.removeItem('2fa_verified');
     setIsExonerated(false); // Reset exoneration state
+    setIsSuspended(false); // Reset suspension state
     return { error };
   };
 
@@ -156,6 +161,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setSession(null);
       setCabinet(null);
       setIsExonerated(false);
+      setIsSuspended(false);
 
       // Então deleta a conta do servidor
       console.log('🗑️ Deletando conta do servidor...');
@@ -180,6 +186,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setSession(null);
         setCabinet(null);
         setIsExonerated(false);
+        setIsSuspended(false);
       } catch (logoutError) {
         console.error('Error during forced logout:', logoutError);
       }
@@ -205,6 +212,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // Reset exoneration state on sign out
         if (!session) {
           setIsExonerated(false);
+          setIsSuspended(false);
         }
       }
     );
@@ -234,6 +242,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setCabinet(null);
       setCabinetLoading(false);
       setIsExonerated(false);
+      setIsSuspended(false);
       return;
     }
 
@@ -267,9 +276,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (!isMounted) return;
 
         if (cabinetData) {
+          const status = cabinetData.status || (cabinetData.active === false ? 'inativo' : 'ativo');
+          
           setCabinet({
             cabinet_id: cabinetData.cabinet_id,
             cabinet_name: cabinetData.cabinet_name,
+            status: status,
             city_name: cabinetData.cabinet_city || cabinetData.city_name,
             institution_name: cabinetData.institution_name || cabinetData.camara_name || cabinetData.cabinet_city || cabinetData.city_name,
             politician_name: cabinetData.politician_name,
@@ -277,6 +289,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           });
           localStorage.setItem('active_cabinet_id', cabinetData.cabinet_id);
           console.log('AuthProvider - Cabinet set from RPC:', cabinetData);
+          
+          if (status === 'suspenso' || status === 'inativo') {
+            setIsSuspended(true);
+          } else {
+            setIsSuspended(false);
+          }
+          
           setIsExonerated(false);
           return;
         }
@@ -289,6 +308,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           .select(`
             id, 
             nome,
+            status,
             camaras (
               nome,
               tipo,
@@ -296,7 +316,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             )
           `)
           .eq('politico_id', user.id)
-          .eq('status', 'ativo')
           .maybeSingle();
 
         if (!isMounted) return;
@@ -309,11 +328,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setCabinet({
             cabinet_id: gabineteData.id,
             cabinet_name: gabineteData.nome,
+            status: gabineteData.status,
             city_name: cityName,
             institution_name: camaraName || (cityName ? `Câmara Municipal de ${cityName}` : undefined),
             user_role: 'politico'
           });
           localStorage.setItem('active_cabinet_id', gabineteData.id);
+          
+          if (gabineteData.status === 'suspenso' || gabineteData.status === 'inativo') {
+            setIsSuspended(true);
+          } else {
+            setIsSuspended(false);
+          }
+          
           setIsExonerated(false);
           return;
         }
@@ -327,6 +354,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             gabinetes!inner (
               id,
               nome,
+              status,
               camaras (
                 nome,
                 tipo,
@@ -348,11 +376,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setCabinet({
             cabinet_id: memberData.gabinete_id,
             cabinet_name: gab.nome,
+            status: gab.status,
             city_name: cityName,
             institution_name: camaraName || (cityName ? `Câmara Municipal de ${cityName}` : undefined),
             user_role: memberData.role
           });
           localStorage.setItem('active_cabinet_id', memberData.gabinete_id);
+          
+          if (gab.status === 'suspenso' || gab.status === 'inativo') {
+            setIsSuspended(true);
+          } else {
+            setIsSuspended(false);
+          }
+          
           setIsExonerated(false);
         } else {
           // If no cabinet found, check if they are exonerated or just don't have a cabinet
@@ -362,6 +398,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           } else {
             setIsExonerated(false);
           }
+          setIsSuspended(false);
           setCabinet(null);
         }
       } catch (error) {
@@ -386,6 +423,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     cabinet,
     cabinetLoading,
     isExonerated,
+    isSuspended,
     signIn,
     signUp,
     signOut,
@@ -400,8 +438,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     loading,
     hasCabinet: !!cabinet,
     cabinetId: cabinet?.cabinet_id,
+    cabinetStatus: cabinet?.status,
     cabinetLoading,
-    isExonerated
+    isExonerated,
+    isSuspended
   });
 
   return (

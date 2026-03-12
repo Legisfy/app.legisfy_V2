@@ -30,6 +30,7 @@ import { AuthProvider } from "./components/AuthProvider";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ConfirmProvider } from "./components/ui/confirm-dialog";
 import { ExonerationPopupModal } from "./components/modals/ExonerationPopupModal";
+import { SuspensionModal } from "./components/modals/SuspensionModal";
 import SaaSOnboarding from "./pages/SaaSOnboarding";
 import AceitarConvite from "./pages/AceitarConvite";
 import AceitarConviteEquipe from "./pages/AceitarConviteEquipe";
@@ -171,16 +172,45 @@ const RootRedirect = () => {
   return <Navigate to="/dashboard" replace />;
 };
 
-// Global Exoneration Handler Component
-function GlobalExonerationHandler() {
+// Global Access Handler Component (Handles Exoneration and Suspension)
+function GlobalAccessHandler() {
   const context = useAuthContext();
+  const [countdown, setCountdown] = useState(10);
+  const [showSuspension, setShowSuspension] = useState(false);
+
+  // Handle suspension countdown
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    
+    if (context.isSuspended && !context.loading && !context.cabinetLoading) {
+      setShowSuspension(true);
+      
+      timer = setInterval(() => {
+        setCountdown((prev) => {
+          if (prev <= 1) {
+            clearInterval(timer);
+            context.signOut();
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    } else {
+      setShowSuspension(false);
+      setCountdown(10);
+    }
+
+    return () => {
+      if (timer) clearInterval(timer);
+    };
+  }, [context.isSuspended, context.loading, context.cabinetLoading]);
 
   // Wait for auth to initialize before proceeding
   if (context.loading || context.cabinetLoading) {
     return null;
   }
 
-  const { isExonerated, deleteAccount, signOut } = context;
+  const { isExonerated, deleteAccount, signOut, isSuspended } = context;
 
   const handleExonerationConfirm = async () => {
     try {
@@ -209,11 +239,22 @@ function GlobalExonerationHandler() {
     }
   };
 
+  const handleManualLogout = async () => {
+    await signOut();
+  };
+
   return (
-    <ExonerationPopupModal
-      isOpen={isExonerated}
-      onConfirm={handleExonerationConfirm}
-    />
+    <>
+      <ExonerationPopupModal
+        isOpen={isExonerated}
+        onConfirm={handleExonerationConfirm}
+      />
+      <SuspensionModal 
+        isOpen={showSuspension}
+        onLogout={handleManualLogout}
+        countdown={countdown}
+      />
+    </>
   );
 }
 
@@ -228,7 +269,7 @@ const App = () => (
             <ErrorBoundary>
               <ConfirmProvider>
                 <AuthProvider>
-                  <GlobalExonerationHandler />
+                  <GlobalAccessHandler />
                   <Routes>
                     {/* Public routes - outside AuthGuard */}
                     <Route path="/" element={<RootRedirect />} />
