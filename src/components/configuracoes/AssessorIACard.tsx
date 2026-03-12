@@ -241,11 +241,11 @@ export const AssessorIACard = () => {
                 </p>
               </div>
 
-              <div className="h-48 lg:h-56 relative flex items-center justify-center overflow-hidden flex-1 px-4">
+              <div className="h-64 lg:h-72 relative flex items-center justify-center overflow-hidden flex-1 bg-gradient-to-b from-transparent via-zinc-500/5 to-transparent">
                 <img 
                   src="https://wvvxstgpjodmfxpekhkf.supabase.co/storage/v1/object/public/LEGISFY/assessor%20ia.png" 
                   alt="Assessor IA"
-                  className="w-full h-full object-contain drop-shadow-2xl animate-in zoom-in-95 duration-700"
+                  className="w-full h-full object-contain drop-shadow-[0_0_30px_rgba(255,255,255,0.1)] animate-in zoom-in-95 duration-1000 scale-[1.35] translate-y-2"
                 />
               </div>
 
