@@ -10,7 +10,7 @@ interface AuthGuardProps {
 const AuthGuardSimples = ({ children }: AuthGuardProps) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, loading, isSuspended } = useAuthContext();
+  const { user, loading, isSuspended, cabinetLoading } = useAuthContext();
 
   // Debug auth state
   console.log('🛡️ AuthGuardSimples - user:', !!user, 'loading:', loading, 'path:', location.pathname, 'user details:', user?.email);
@@ -63,8 +63,8 @@ const AuthGuardSimples = ({ children }: AuthGuardProps) => {
     }
   }, [user, loading, location.pathname, navigate]);
 
-  // Show loading while checking authentication
-  if (loading) {
+  // Show loading while checking authentication and cabinet status
+  if (loading || (user && cabinetLoading)) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">

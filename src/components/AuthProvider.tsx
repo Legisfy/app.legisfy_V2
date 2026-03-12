@@ -252,161 +252,116 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const fetchActiveCabinet = async () => {
       try {
         setCabinetLoading(true);
-        console.log('AuthProvider - Fetching cabinet for user:', user.id);
+        console.log('🔐 AuthProvider - Detecção de gabinete iniciada para:', user.id);
 
-        // Clear any stale cache when fetching fresh
-        localStorage.removeItem('active_cabinet_id');
+        // 1. Obter Perfil do Usuário (Fonte da verdade para o gabinete_id)
+        const { data: profile, error: profileError } = await (supabase
+          .from('profiles') as any)
+          .select('gabinete_id, main_role')
+          .eq('user_id', user.id)
+          .maybeSingle();
 
-        // 1. Try RPC first (reliable and fast)
+        if (profileError) {
+          console.error('❌ AuthProvider - Erro ao buscar perfil:', profileError);
+        }
+
+        const profileCabinetId = profile?.gabinete_id;
+        console.log('👤 AuthProvider - Perfil carregado:', { 
+          role: profile?.main_role, 
+          gabinete_id: profileCabinetId 
+        });
+
+        // 2. Tentar buscar dados via RPC primeiro (para compatibilidade com lógica existente)
         let cabinetData = null;
         try {
-          // Explicitly cast supabase to any to avoid type issues with new RPCs
           const { data: rpcData, error: rpcError } = await (supabase as any).rpc('get_active_cabinet_with_correct_name');
           if (!rpcError && rpcData && rpcData.length > 0) {
             cabinetData = rpcData[0];
-          } else {
-            const { data: oldRpcData, error: oldRpcError } = await (supabase as any).rpc('get_active_cabinet');
-            if (!oldRpcError && oldRpcData && oldRpcData.length > 0) {
-              cabinetData = oldRpcData[0];
-            }
+            console.log('🚀 AuthProvider - Gabinete via RPC detectado');
           }
         } catch (e) {
-          console.warn('RPC calls failed:', e);
+          console.warn('⚠️ AuthProvider - RPC failed, continuing to fallbacks');
         }
 
-        if (!isMounted) return;
+        // 3. Se não veio via RPC, ou temos um ID no perfil, buscar status diretamente
+        const targetCabinetId = cabinetData?.cabinet_id || profileCabinetId;
 
-        if (cabinetData) {
-          const status = cabinetData.status || (cabinetData.active === false ? 'inativo' : 'ativo');
-          
-          setCabinet({
-            cabinet_id: cabinetData.cabinet_id,
-            cabinet_name: cabinetData.cabinet_name,
-            status: status,
-            city_name: cabinetData.cabinet_city || cabinetData.city_name,
-            institution_name: cabinetData.institution_name || cabinetData.camara_name || cabinetData.cabinet_city || cabinetData.city_name,
-            politician_name: cabinetData.politician_name,
-            user_role: cabinetData.user_role
-          });
-          localStorage.setItem('active_cabinet_id', cabinetData.cabinet_id);
-          console.log('AuthProvider - Cabinet set from RPC:', cabinetData);
-          
-          if (status !== 'ativo') {
-            setIsSuspended(true);
-          } else {
-            setIsSuspended(false);
-          }
-          
-          setIsExonerated(false);
-          return;
-        }
-
-        console.log('AuthProvider - RPCs failed, using fallback queries');
-
-        // 2. Fallback: Politician Check
-        const { data: gabineteData } = await supabase
-          .from('gabinetes')
-          .select(`
-            id, 
-            nome,
-            status,
-            camaras (
-              nome,
-              tipo,
-              cidades (nome)
-            )
-          `)
-          .eq('politico_id', user.id)
-          .maybeSingle();
-
-        if (!isMounted) return;
-
-        if (gabineteData) {
-          const camara: any = Array.isArray(gabineteData.camaras) ? gabineteData.camaras[0] : gabineteData.camaras;
-          const cityName = camara?.cidades?.nome;
-          const camaraName = camara?.nome;
-
-          setCabinet({
-            cabinet_id: gabineteData.id,
-            cabinet_name: gabineteData.nome,
-            status: gabineteData.status,
-            city_name: cityName,
-            institution_name: camaraName || (cityName ? `Câmara Municipal de ${cityName}` : undefined),
-            user_role: 'politico'
-          });
-          localStorage.setItem('active_cabinet_id', gabineteData.id);
-          
-          if (gabineteData.status !== 'ativo') {
-            setIsSuspended(true);
-          } else {
-            setIsSuspended(false);
-          }
-          
-          setIsExonerated(false);
-          return;
-        }
-
-        // 3. Fallback: Member Check (using gabinete_members)
-        // Note: casting        // Fallback manually if RPC is not available or doesn't return data
-        const { data: memberData } = await (supabase.from('gabinete_usuarios' as any) as any)
-          .select(`
-            gabinete_id,
-            role,
-            gabinetes!inner (
-              id,
+        if (targetCabinetId) {
+          console.log('🔍 AuthProvider - Buscando status direto para gabinete:', targetCabinetId);
+          const { data: directCabinet, error: directError } = await supabase
+            .from('gabinetes')
+            .select(`
+              id, 
               nome,
               status,
+              politician_name,
               camaras (
                 nome,
                 tipo,
                 cidades (nome)
               )
-            )
-          `)
-          .eq('user_id', user.id)
-          .maybeSingle();
+            `)
+            .eq('id', targetCabinetId)
+            .maybeSingle();
 
-        if (!isMounted) return;
-
-        if (memberData?.gabinetes) {
-          const gab = memberData.gabinetes as any;
-          const camara = Array.isArray(gab.camaras) ? gab.camaras[0] : gab.camaras;
-          const cityName = camara?.cidades?.nome;
-          const camaraName = camara?.nome;
-
-          setCabinet({
-            cabinet_id: memberData.gabinete_id,
-            cabinet_name: gab.nome,
-            status: gab.status,
-            city_name: cityName,
-            institution_name: camaraName || (cityName ? `Câmara Municipal de ${cityName}` : undefined),
-            user_role: memberData.role
-          });
-          localStorage.setItem('active_cabinet_id', memberData.gabinete_id);
-          
-          if (gab.status !== 'ativo') {
-            setIsSuspended(true);
-          } else {
-            setIsSuspended(false);
+          if (directError) {
+            console.error('❌ AuthProvider - Erro ao buscar gabinete direto:', directError);
           }
+
+          if (directCabinet) {
+            const camara: any = Array.isArray(directCabinet.camaras) ? directCabinet.camaras[0] : directCabinet.camaras;
+            const cityName = camara?.cidades?.nome;
+            const camaraName = camara?.nome;
+            const status = directCabinet.status || 'ativo';
+
+            console.log('📊 AuthProvider - Gabinete encontrado:', { 
+              id: directCabinet.id, 
+              nome: directCabinet.nome, 
+              status: status 
+            });
+
+            if (!isMounted) return;
+
+            setCabinet({
+              cabinet_id: directCabinet.id,
+              cabinet_name: directCabinet.nome,
+              status: status,
+              city_name: cityName,
+              institution_name: camaraName || (cityName ? `Câmara Municipal de ${cityName}` : undefined),
+              politician_name: directCabinet.politician_name,
+              user_role: profile?.main_role || 'assessor'
+            });
+
+            localStorage.setItem('active_cabinet_id', directCabinet.id);
+            
+            // ATENÇÃO: O bloqueio deve ser ativado se o status for QUALQUER COISA diferente de 'ativo'
+            const shouldBlock = status !== 'ativo';
+            console.log('🚫 AuthProvider - Status de bloqueio:', shouldBlock);
+            setIsSuspended(shouldBlock);
+            setIsExonerated(false);
+            return;
+          }
+        }
+
+        // 4. Se chegou aqui sem gabinete, verificar se foi exonerado ou se é Admin
+        if (isMounted) {
+          console.log('❓ AuthProvider - Nenhum gabinete vinculado encontrado');
+          setCabinet(null);
+          setIsSuspended(false);
           
-          setIsExonerated(false);
-        } else {
-          // If no cabinet found, check if they are exonerated or just don't have a cabinet
-          const { data: profile } = await supabase.from('profiles').select('main_role').eq('user_id', user.id).maybeSingle();
           if (profile && profile.main_role !== 'admin_plataforma' && profile.main_role !== 'politico') {
             setIsExonerated(true);
           } else {
             setIsExonerated(false);
           }
-          setIsSuspended(false);
-          setCabinet(null);
         }
       } catch (error) {
-        console.error('AuthProvider - Unexpected error in fetchActiveCabinet:', error);
-        setCabinet(null);
+        console.error('❌ AuthProvider - Erro inesperado em fetchActiveCabinet:', error);
       } finally {
-        if (isMounted) setCabinetLoading(false);
+        if (isMounted) {
+          setCabinetLoading(false);
+          console.log('🏁 AuthProvider - Carregamento finalizado');
+        }
       }
     };
 
