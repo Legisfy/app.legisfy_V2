@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { useState, useEffect, Suspense, lazy } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuthContext } from "@/components/AuthProvider";
@@ -17,8 +17,6 @@ import { AssessorIAConfirmationModal } from "@/components/modals/AssessorIAConfi
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-
-const Spline = lazy(() => import('@splinetool/react-spline'));
 
 // Atividades que o Assessor IA realiza
 const IA_ACTIVITIES = [
@@ -239,17 +237,12 @@ export const AssessorIACard = () => {
                 </p>
               </div>
 
-              <div className="h-48 lg:h-56 relative flex items-center justify-center overflow-hidden flex-1 scale-90">
-                <Suspense fallback={
-                  <div className="flex items-center justify-center h-full">
-                    <Bot className="h-12 w-12 text-zinc-700 animate-pulse" />
-                  </div>
-                }>
-                  <Spline
-                    scene="https://prod.spline.design/kZDDjO5HuC9GJUM2/scene.splinecode"
-                    className="w-full h-full"
-                  />
-                </Suspense>
+              <div className="h-48 lg:h-56 relative flex items-center justify-center overflow-hidden flex-1 px-4">
+                <img 
+                  src="https://wvvxstgpjodmfxpekhkf.supabase.co/storage/v1/object/public/LEGISFY/assessor%20ia.png" 
+                  alt="Assessor IA"
+                  className="w-full h-full object-contain drop-shadow-2xl animate-in zoom-in-95 duration-700"
+                />
               </div>
 
               <div className="relative z-10 px-5 pb-5">
