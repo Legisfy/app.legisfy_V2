@@ -76,6 +76,13 @@ const marketingItems = [
     tooltip: "Organize sua estratégia criando públicos através da lista de eleitores, lista de pessoas participantes de eventos e dentre outros.",
     permissionModule: 'publicos' as const,
   },
+  {
+    title: "Campanhas",
+    url: "/campanhas",
+    icon: Megaphone,
+    tooltip: "Crie campanhas de envio de mensagens em massa para seus eleitores via WhatsApp.",
+    permissionModule: null,
+  },
 ];
 
 const restrictedItems = [

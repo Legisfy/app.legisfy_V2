@@ -13,6 +13,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { useForm } from "react-hook-form";
 import { DocumentTemplatesCard } from "@/components/configuracoes/DocumentTemplatesCard";
 import { AssessorIACard } from "@/components/configuracoes/AssessorIACard";
+import { WhatsAppConfigCard } from "@/components/configuracoes/WhatsAppConfigCard";
 import { useGabineteConfig } from "@/hooks/useGabineteConfig";
 import { useAuthContext } from "@/components/AuthProvider";
 import { supabase } from "@/integrations/supabase/client";
@@ -346,6 +347,11 @@ export default function Configuracoes() {
               </div>
             </CardContent>
           </Card>
+        </div>
+
+        {/* Integração WhatsApp Dedicado */}
+        <div className="col-span-full">
+          <WhatsAppConfigCard />
         </div>
 
         {/* Meu Assessor IA */}

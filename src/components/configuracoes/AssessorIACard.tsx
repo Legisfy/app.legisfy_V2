@@ -16,13 +16,22 @@ const Spline = lazy(() => import('@splinetool/react-spline'));
 // Ferramentas disponíveis para o Assessor IA
 const AVAILABLE_TOOLS = [
   {
+    id: 'whatsapp',
+    name: 'WhatsApp',
+    description: 'Atendimento via WhatsApp Dedicado',
+    icon: MessageSquare,
+    color: 'text-green-500',
+    bg: 'bg-green-500/10',
+    required: false,
+  },
+  {
     id: 'telegram',
     name: 'Telegram Bot',
     description: 'Atendimento via Telegram',
     icon: Send,
     color: 'text-sky-500',
     bg: 'bg-sky-500/10',
-    required: true,
+    required: false,
   },
   {
     id: 'gmail',
@@ -68,7 +77,8 @@ export const AssessorIACard = () => {
   const [comportamento, setComportamento] = useState("");
   const [telegramToken, setTelegramToken] = useState("");
   const [enabledTools, setEnabledTools] = useState<Record<string, boolean>>({
-    telegram: true,
+    whatsapp: true,
+    telegram: false,
     gmail: false,
     google_calendar: false,
     documentos: false,
