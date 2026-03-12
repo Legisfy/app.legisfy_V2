@@ -290,7 +290,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           localStorage.setItem('active_cabinet_id', cabinetData.cabinet_id);
           console.log('AuthProvider - Cabinet set from RPC:', cabinetData);
           
-          if (status === 'suspenso' || status === 'inativo') {
+          if (status !== 'ativo') {
             setIsSuspended(true);
           } else {
             setIsSuspended(false);
@@ -335,7 +335,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           });
           localStorage.setItem('active_cabinet_id', gabineteData.id);
           
-          if (gabineteData.status === 'suspenso' || gabineteData.status === 'inativo') {
+          if (gabineteData.status !== 'ativo') {
             setIsSuspended(true);
           } else {
             setIsSuspended(false);
@@ -383,7 +383,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           });
           localStorage.setItem('active_cabinet_id', memberData.gabinete_id);
           
-          if (gab.status === 'suspenso' || gab.status === 'inativo') {
+          if (gab.status !== 'ativo') {
             setIsSuspended(true);
           } else {
             setIsSuspended(false);

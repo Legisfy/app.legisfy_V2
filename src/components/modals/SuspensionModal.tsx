@@ -28,20 +28,21 @@ export const SuspensionModal: React.FC<SuspensionModalProps> = ({
           
           <div className="space-y-4">
             <DialogTitle className="text-2xl font-bold text-foreground">
-              Acesso Suspenso
+              Acesso Temporariamente Bloqueado
             </DialogTitle>
             
             <div className="space-y-4 text-muted-foreground">
               <p className="text-base font-medium text-foreground/90 bg-red-50 dark:bg-red-950/20 p-4 rounded-lg border border-red-100 dark:border-red-900/30">
-                O acesso deste gabinete está temporariamente suspenso. Por favor, contate o suporte para regularizar.
+                O acesso deste gabinete está temporariamente bloqueado. Por favor, contate o suporte para regularizar.
               </p>
               
               <div className="grid grid-cols-1 gap-2 text-sm text-left bg-secondary/50 p-4 rounded-lg">
                 <p className="font-semibold text-foreground mb-1">Possíveis causas:</p>
                 <ul className="list-disc list-inside space-y-1 ml-1">
-                  <li>Atraso no pagamento</li>
-                  <li>Manutenção do sistema</li>
+                  <li>Pagamento pendente</li>
                   <li>Uso indevido da plataforma</li>
+                  <li>Feriu alguma política de uso</li>
+                  <li>Estamos em manutenção</li>
                 </ul>
               </div>
 
