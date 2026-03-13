@@ -183,7 +183,8 @@ export const AssessorIACard = () => {
       }
     } catch (error: any) {
       console.error("Erro ao conectar:", error);
-      toast.error("Falha ao gerar QR Code");
+      const msg = error.context?.error || error.message || "Falha ao gerar QR Code";
+      toast.error(msg);
     } finally {
       setIsConnecting(false);
     }
