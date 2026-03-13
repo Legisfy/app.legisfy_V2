@@ -355,7 +355,7 @@ export const AssessorIACard = () => {
                   <h3 className="text-xs font-bold text-foreground">Personalidade e Escopo</h3>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-3">
                   <div className="space-y-1">
                     <Label className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Nome do Assessor</Label>
                     <Input
@@ -363,15 +363,6 @@ export const AssessorIACard = () => {
                       value={nome}
                       onChange={(e) => setNome(e.target.value)}
                       className="h-8 text-xs bg-zinc-900/20"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Número Oficial</Label>
-                    <Input
-                      placeholder="Ex: 5511999999999"
-                      value={whatsappNumber}
-                      onChange={(e) => setWhatsappNumber(e.target.value)}
-                      className="h-8 text-xs font-mono bg-zinc-900/20"
                     />
                   </div>
                 </div>
@@ -404,114 +395,100 @@ export const AssessorIACard = () => {
                       className="scale-[0.6]"
                     />
                   </div>
+                 <div className="flex flex-col gap-4">
+                  <div className="bg-zinc-900/40 border border-zinc-800/50 rounded-xl p-6 flex flex-col items-center justify-center text-center space-y-4">
+                    <div className="space-y-1 mb-2">
+                       <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest text-center">Status da Conexão</p>
+                       <div className="flex items-center justify-center gap-1.5">
+                         <div className={cn(
+                           "h-2 w-2 rounded-full",
+                           (connectionStatus === 'open' || connectionStatus === 'CONNECTED') ? "bg-green-500 animate-pulse" : "bg-amber-500"
+                         )} />
+                         <span className={cn(
+                           "text-[10px] font-bold uppercase tracking-widest",
+                           (connectionStatus === 'open' || connectionStatus === 'CONNECTED') ? "text-green-500" : "text-amber-500"
+                         )}>
+                           {connectionStatus === 'open' || connectionStatus === 'CONNECTED' ? "Operando / Conectado" : "Aguardando Conexão"}
+                         </span>
+                       </div>
+                    </div>
+
+                    <div className="relative shrink-0 w-56 h-56 bg-white p-3 rounded-2xl shadow-2xl flex items-center justify-center group overflow-hidden border-4 border-zinc-800/20">
+                      {qrCode ? (
+                        <img src={qrCode.startsWith('data:') ? qrCode : `data:image/png;base64,${qrCode}`} alt="QR Code" className="w-full h-full" />
+                      ) : (connectionStatus === 'open' || connectionStatus === 'CONNECTED') ? (
+                        <div className="flex flex-col items-center justify-center text-green-600 space-y-2">
+                          <div className="bg-green-100 p-4 rounded-full">
+                            <Check className="h-16 w-16" />
+                          </div>
+                          <span className="text-xs font-black uppercase tracking-tighter">Conectado com Sucesso</span>
+                        </div>
+                      ) : (
+                        <div className="h-full w-full flex items-center justify-center opacity-10">
+                          <QrCode className="h-24 w-24 text-zinc-900" />
+                        </div>
+                      )}
+                      
+                      {(!qrCode && connectionStatus !== 'open' && connectionStatus !== 'CONNECTED') && (
+                        <div className="absolute inset-0 bg-black/95 flex flex-col items-center justify-center p-6 text-center animate-in fade-in duration-300">
+                          <div className="bg-primary/10 p-4 rounded-full mb-4">
+                            <QrCode className="h-10 w-10 text-primary animate-pulse" />
+                          </div>
+                          <h4 className="text-sm font-bold text-white mb-2 uppercase tracking-tight">Pronto para Conectar?</h4>
+                          <p className="text-[10px] text-zinc-400 leading-relaxed mb-4 italic">
+                            A IA assumirá o atendimento assim que você escanear o código.
+                          </p>
+                          <Button 
+                            size="lg" 
+                            onClick={handleConnect}
+                            disabled={isConnecting}
+                            className="w-full shadow-xl shadow-primary/20 font-bold uppercase text-[10px] tracking-widest"
+                          >
+                            {isConnecting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />}
+                            Gerar QR Code Agora
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+
+                    {(qrCode || connectionStatus === 'open' || connectionStatus === 'CONNECTED') && (
+                      <div className="flex flex-col gap-3 w-full max-w-xs animate-in slide-in-from-bottom-2 duration-500">
+                         {qrCode && (
+                           <div className="bg-amber-500/10 border border-amber-500/20 p-3 rounded-lg flex items-start gap-3 text-left">
+                              <AlertCircle className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
+                              <p className="text-[9px] text-amber-200/80 leading-snug font-medium italic">
+                                Abra o WhatsApp no seu celular, vá em <b>Aparelhos Conectados</b> e escaneie este código.
+                              </p>
+                           </div>
+                         )}
+
+                         <div className="flex gap-2 w-full">
+                            {(connectionStatus === 'open' || connectionStatus === 'CONNECTED') ? (
+                              <Button 
+                                variant="outline" 
+                                size="sm" 
+                                onClick={handleLogout}
+                                className="w-full h-9 text-[9px] font-bold uppercase border-red-500/30 text-red-500 hover:bg-red-500/10 bg-red-500/5 backdrop-blur-sm"
+                              >
+                                Desconectar Aparelho
+                              </Button>
+                            ) : (
+                              <Button 
+                                variant="outline"
+                                size="sm" 
+                                onClick={handleConnect}
+                                disabled={isConnecting}
+                                className="w-full h-9 text-[9px] font-bold uppercase border-white/10 text-zinc-400 hover:bg-white/5"
+                              >
+                                {isConnecting ? <Loader2 className="h-3 w-3 animate-spin mr-2" /> : <QrCode className="h-3 w-3 mr-2" />}
+                                Atualizar QR Code
+                              </Button>
+                            )}
+                         </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
-
-                <div className="flex flex-col md:flex-row gap-4 items-center">
-                  <div className="shrink-0 w-32 h-32 bg-white p-2 rounded-lg shadow-lg relative group overflow-hidden flex items-center justify-center">
-                    {qrCode ? (
-                      <img src={qrCode.startsWith('data:') ? qrCode : `data:image/png;base64,${qrCode}`} alt="QR Code" className="w-full h-full" />
-                    ) : (connectionStatus === 'open' || connectionStatus === 'CONNECTED') ? (
-                      <div className="flex flex-col items-center justify-center text-green-600">
-                        <Check className="h-10 w-10 mb-1" />
-                        <span className="text-[8px] font-bold uppercase">Conectado</span>
-                      </div>
-                    ) : (
-                      <div className="h-full w-full flex items-center justify-center opacity-20">
-                        <QrCode className="h-14 w-14 text-zinc-400" />
-                      </div>
-                    )}
-                    {(!qrCode && connectionStatus !== 'open' && connectionStatus !== 'CONNECTED') && (
-                      <div className="absolute inset-0 bg-black/80 flex flex-col items-center justify-center p-2 text-center">
-                        <QrCode className="h-5 w-5 text-zinc-400 mb-1" />
-                        <p className="text-[8px] font-bold text-zinc-200 uppercase leading-tight">
-                          Clique em <br /> Gerar QR Code
-                        </p>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="flex-1 space-y-3 w-full">
-                    <div className="space-y-1">
-                      <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-tighter">Status da Conexão</p>
-                      <div className="flex items-center gap-1.5">
-                        <div className={cn(
-                          "h-1.5 w-1.5 rounded-full",
-                          whatsappEnabled ? "bg-green-500 animate-pulse" : "bg-amber-500"
-                        )} />
-                        <span className={cn(
-                          "text-[9px] font-bold uppercase tracking-widest",
-                          (connectionStatus === 'open' || connectionStatus === 'CONNECTED') ? "text-green-500" : "text-amber-500"
-                        )}>
-                          {connectionStatus === 'open' || connectionStatus === 'CONNECTED' ? "Operando / Conectado" : "Aguardando Conexão"}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="flex gap-2">
-                       {(connectionStatus === 'open' || connectionStatus === 'CONNECTED') ? (
-                         <Button 
-                           variant="outline" 
-                           size="sm" 
-                           onClick={handleLogout}
-                           className="h-7 text-[8px] font-bold uppercase border-red-500/20 text-red-500 hover:bg-red-500/10"
-                         >
-                           Desconectar
-                         </Button>
-                       ) : (
-                         <Button 
-                           size="sm" 
-                           onClick={handleConnect}
-                           disabled={isConnecting}
-                           className="h-7 text-[8px] font-bold uppercase"
-                         >
-                           {isConnecting ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <QrCode className="h-3 w-3 mr-1" />}
-                           Gerar Novo QR Code
-                         </Button>
-                       )}
-                    </div>
-
-                    <Collapsible open={showAdvanced} onOpenChange={setShowAdvanced} className="border border-border/40 rounded-lg overflow-hidden bg-muted/5">
-                      <CollapsibleTrigger asChild>
-                        <Button variant="ghost" size="sm" className="w-full flex items-center justify-between px-2 py-1.5 h-auto text-[8px] font-bold uppercase tracking-widest text-muted-foreground">
-                          Configurações Técnicas
-                          {showAdvanced ? <ChevronUp className="h-2.5 w-2.5" /> : <ChevronDown className="h-2.5 w-2.5" />}
-                        </Button>
-                      </CollapsibleTrigger>
-                      <CollapsibleContent className="p-2 border-t border-border/40 space-y-2">
-                        <div className="grid grid-cols-2 gap-2">
-                          <div className="space-y-1">
-                            <Label className="text-[7px] uppercase tracking-wider text-muted-foreground">Provedor</Label>
-                            <select 
-                              value={provider} 
-                              onChange={(e) => setProvider(e.target.value)} 
-                              className="w-full h-7 bg-background border border-border rounded px-1.5 text-[9px]"
-                            >
-                              <option value="evolution">Evolution API</option>
-                              <option value="zapi">Z-API</option>
-                            </select>
-                          </div>
-                          <div className="space-y-1">
-                            <Label className="text-[7px] uppercase tracking-wider text-muted-foreground">Instância</Label>
-                            <Input 
-                              placeholder="ID" 
-                              value={instanceName} 
-                              onChange={(e) => setInstanceName(e.target.value)}
-                              className="h-7 text-[9px]" 
-                            />
-                          </div>
-                        </div>
-                        <div className="space-y-0.5">
-                          <Label className="text-[7px] uppercase tracking-wider text-muted-foreground">URL</Label>
-                          <Input 
-                            placeholder="https://..." 
-                            value={apiUrl} 
-                            onChange={(e) => setApiUrl(e.target.value)}
-                            className="h-7 text-[9px]" 
-                          />
-                        </div>
-                      </CollapsibleContent>
-                    </Collapsible>
-                  </div>
                 </div>
               </div>
 
