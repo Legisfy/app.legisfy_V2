@@ -12,6 +12,7 @@ import { Switch } from "@/components/ui/switch";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { FunctionsHttpError } from "@supabase/supabase-js";
 import { useAuthContext } from "@/components/AuthProvider";
 import { AssessorIAConfirmationModal } from "@/components/modals/AssessorIAConfirmationModal";
 import { Badge } from "@/components/ui/badge";
@@ -153,6 +154,13 @@ export const AssessorIACard = () => {
     
     loadData();
 
+    // Hidden Debug Check
+    if (cabinet?.cabinet_id) {
+      supabase.functions.invoke('manage-whatsapp-instance', { body: { action: 'debug-ping' } })
+        .then(({ data }) => console.log('DEBUG WHATSAPP CONFIG:', data))
+        .catch(err => console.error('DEBUG WHATSAPP ERR:', err));
+    }
+
     return () => {
       if (pollingInterval) clearInterval(pollingInterval);
     };
@@ -183,7 +191,19 @@ export const AssessorIACard = () => {
       }
     } catch (error: any) {
       console.error("Erro ao conectar:", error);
-      const msg = error.context?.error || error.message || "Falha ao gerar QR Code";
+      let msg = "Falha ao gerar QR Code";
+      
+      if (error instanceof FunctionsHttpError) {
+        try {
+          const body = await error.context.json();
+          msg = body.error || body.message || msg;
+        } catch (e) {
+          msg = error.message || msg;
+        }
+      } else {
+        msg = error.message || msg;
+      }
+      
       toast.error(msg);
     } finally {
       setIsConnecting(false);
