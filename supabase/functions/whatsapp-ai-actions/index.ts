@@ -13,14 +13,16 @@ const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
 const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY')!
+const OPENROUTER_API_KEY = Deno.env.get('OPENROUTER_API_KEY') || OPENAI_API_KEY;
 
 interface ActionRequest {
-  action: string
-  parameters: any
+  action?: string
+  parameters?: any
   userId: string
   userName?: string
   gabineteId: string
   userRole: string
+  userText: string
 }
 
 // Função para cadastrar eleitor
@@ -637,7 +639,15 @@ serve(async (req) => {
           const aiText = typeof parsed.parameters?.text === 'string'
             ? parsed.parameters.text
             : undefined
-          const fallback = 'Sou o assistente IA do gabinete. Posso cadastrar eleitores, demandas, indicações e ideias. Diga por exemplo: "cadastrar eleitor João Silva 11999999999 Rua das Flores, 123".'
+          
+          // Buscar nome do assessor para o prompt
+          const { data: assessor } = await supabase
+            .from('meu_assessor_ia')
+            .select('nome, comportamento')
+            .eq('gabinete_id', gabineteId)
+            .maybeSingle();
+
+          const fallback = `Sou o ${assessor?.nome || 'assistente IA'} do gabinete. Posso cadastrar eleitores, demandas, indicações e ideias. Como posso ajudar?`
           result = { success: true, message: aiText || fallback }
           break
         }

@@ -104,6 +104,10 @@ export const AssessorIACard = () => {
   const [provider, setProvider] = useState("evolution");
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [integrationId, setIntegrationId] = useState<string | null>(null);
+  const [qrCode, setQrCode] = useState<string | null>(null);
+  const [connectionStatus, setConnectionStatus] = useState<string>("DISCONNECTED");
+  const [isConnecting, setIsConnecting] = useState(false);
+  const [pollingInterval, setPollingInterval] = useState<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     const loadData = async () => {
@@ -148,7 +152,86 @@ export const AssessorIACard = () => {
     };
     
     loadData();
+
+    return () => {
+      if (pollingInterval) clearInterval(pollingInterval);
+    };
   }, [cabinet?.cabinet_id]);
+
+  const handleConnect = async () => {
+    if (!cabinet?.cabinet_id) return;
+    
+    setIsConnecting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('manage-whatsapp-instance', {
+        body: { action: 'connect', gabineteId: cabinet.cabinet_id }
+      });
+
+      if (error) throw error;
+
+      if (data.qrcode) {
+        setQrCode(data.qrcode);
+        setConnectionStatus(data.status);
+        toast.info("Aguardando leitura do QR Code...");
+        
+        // Iniciar polling
+        startPolling();
+      } else if (data.status === 'open' || data.status === 'CONNECTED') {
+        setConnectionStatus('CONNECTED');
+        setWhatsappEnabled(true);
+        toast.success("WhatsApp conectado com sucesso!");
+      }
+    } catch (error: any) {
+      console.error("Erro ao conectar:", error);
+      toast.error("Falha ao gerar QR Code");
+    } finally {
+      setIsConnecting(false);
+    }
+  };
+
+  const startPolling = () => {
+    if (pollingInterval) clearInterval(pollingInterval);
+    
+    const interval = setInterval(async () => {
+      try {
+        const { data } = await supabase.functions.invoke('manage-whatsapp-instance', {
+          body: { action: 'get-status', gabineteId: cabinet?.cabinet_id }
+        });
+
+        if (data.status === 'open' || data.status === 'CONNECTED') {
+          setConnectionStatus('CONNECTED');
+          setWhatsappEnabled(true);
+          setQrCode(null);
+          toast.success("WhatsApp conectado!");
+          clearInterval(interval);
+        } else if (data.qrcode) {
+          setQrCode(data.qrcode);
+          setConnectionStatus(data.status);
+        }
+      } catch (err) {
+        console.error("Erro no polling:", err);
+      }
+    }, 5000);
+    
+    setPollingInterval(interval);
+  };
+
+  const handleLogout = async () => {
+    if (!cabinet?.cabinet_id) return;
+    
+    try {
+      await supabase.functions.invoke('manage-whatsapp-instance', {
+        body: { action: 'logout', gabineteId: cabinet.cabinet_id }
+      });
+      setConnectionStatus('DISCONNECTED');
+      setWhatsappEnabled(false);
+      setQrCode(null);
+      if (pollingInterval) clearInterval(pollingInterval);
+      toast.success("Desconectado com sucesso");
+    } catch (error) {
+      toast.error("Erro ao desconectar");
+    }
+  };
 
   const handleSalvarTudo = async () => {
     if (!nome.trim() || !comportamento.trim()) {
@@ -324,19 +407,24 @@ export const AssessorIACard = () => {
                 </div>
 
                 <div className="flex flex-col md:flex-row gap-4 items-center">
-                  <div className="shrink-0 w-32 h-32 bg-white p-2 rounded-lg shadow-lg relative group overflow-hidden">
-                    {whatsappEnabled && apiUrl && apiKey ? (
-                      <QrCode className="h-full w-full text-zinc-900" />
+                  <div className="shrink-0 w-32 h-32 bg-white p-2 rounded-lg shadow-lg relative group overflow-hidden flex items-center justify-center">
+                    {qrCode ? (
+                      <img src={qrCode.startsWith('data:') ? qrCode : `data:image/png;base64,${qrCode}`} alt="QR Code" className="w-full h-full" />
+                    ) : (connectionStatus === 'open' || connectionStatus === 'CONNECTED') ? (
+                      <div className="flex flex-col items-center justify-center text-green-600">
+                        <Check className="h-10 w-10 mb-1" />
+                        <span className="text-[8px] font-bold uppercase">Conectado</span>
+                      </div>
                     ) : (
                       <div className="h-full w-full flex items-center justify-center opacity-20">
                         <QrCode className="h-14 w-14 text-zinc-400" />
                       </div>
                     )}
-                    {(!whatsappEnabled || !apiUrl || !apiKey) && (
+                    {(!qrCode && connectionStatus !== 'open' && connectionStatus !== 'CONNECTED') && (
                       <div className="absolute inset-0 bg-black/80 flex flex-col items-center justify-center p-2 text-center">
-                        <AlertCircle className="h-5 w-5 text-amber-500 mb-1" />
+                        <QrCode className="h-5 w-5 text-zinc-400 mb-1" />
                         <p className="text-[8px] font-bold text-zinc-200 uppercase leading-tight">
-                          Salve para <br /> conectar
+                          Clique em <br /> Gerar QR Code
                         </p>
                       </div>
                     )}
@@ -352,11 +440,34 @@ export const AssessorIACard = () => {
                         )} />
                         <span className={cn(
                           "text-[9px] font-bold uppercase tracking-widest",
-                          whatsappEnabled ? "text-green-500" : "text-amber-500"
+                          (connectionStatus === 'open' || connectionStatus === 'CONNECTED') ? "text-green-500" : "text-amber-500"
                         )}>
-                          {whatsappEnabled ? "Operando / Conectado" : "Aguardando Ativação"}
+                          {connectionStatus === 'open' || connectionStatus === 'CONNECTED' ? "Operando / Conectado" : "Aguardando Conexão"}
                         </span>
                       </div>
+                    </div>
+
+                    <div className="flex gap-2">
+                       {(connectionStatus === 'open' || connectionStatus === 'CONNECTED') ? (
+                         <Button 
+                           variant="outline" 
+                           size="sm" 
+                           onClick={handleLogout}
+                           className="h-7 text-[8px] font-bold uppercase border-red-500/20 text-red-500 hover:bg-red-500/10"
+                         >
+                           Desconectar
+                         </Button>
+                       ) : (
+                         <Button 
+                           size="sm" 
+                           onClick={handleConnect}
+                           disabled={isConnecting}
+                           className="h-7 text-[8px] font-bold uppercase"
+                         >
+                           {isConnecting ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <QrCode className="h-3 w-3 mr-1" />}
+                           Gerar Novo QR Code
+                         </Button>
+                       )}
                     </div>
 
                     <Collapsible open={showAdvanced} onOpenChange={setShowAdvanced} className="border border-border/40 rounded-lg overflow-hidden bg-muted/5">
