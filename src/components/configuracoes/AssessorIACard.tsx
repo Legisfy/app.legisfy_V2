@@ -378,26 +378,11 @@ export const AssessorIACard = () => {
                 </div>
               </div>
 
-              {/* Seção 2: Conexão WhatsApp Integrada */}
-              <div className="space-y-3">
-                <div className="flex items-center justify-between gap-2 pb-1.5 border-b border-border/50">
-                  <div className="flex items-center gap-2">
-                    <MessageSquare className="h-3.5 w-3.5 text-green-500" />
-                    <h3 className="text-xs font-bold text-foreground">Conexão WhatsApp</h3>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Badge variant={whatsappEnabled ? "success" : "secondary"} className="text-[7px] uppercase font-bold">
-                      {whatsappEnabled ? "Ativo" : "Inativo"}
-                    </Badge>
-                    <Switch 
-                      checked={whatsappEnabled} 
-                      onCheckedChange={setWhatsappEnabled}
-                      className="scale-[0.6]"
-                    />
-                  </div>
-                 <div className="flex flex-col gap-4">
+              {/* Seção 2: Conexão WhatsApp Integrada (Redesenhada) */}
+              <div className="space-y-3 pt-2">
+                <div className="flex flex-col gap-4">
                   <div className="bg-zinc-900/40 border border-zinc-800/50 rounded-xl p-6 flex flex-col items-center justify-center text-center space-y-4">
-                    <div className="space-y-1 mb-2">
+                    <div className="space-y-1 mb-2 relative w-full">
                        <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest text-center">Status da Conexão</p>
                        <div className="flex items-center justify-center gap-1.5">
                          <div className={cn(
@@ -410,6 +395,15 @@ export const AssessorIACard = () => {
                          )}>
                            {connectionStatus === 'open' || connectionStatus === 'CONNECTED' ? "Operando / Conectado" : "Aguardando Conexão"}
                          </span>
+                       </div>
+                       
+                       {/* Switch integrado no canto superior direito do card interno */}
+                       <div className="absolute right-0 top-0 flex items-center gap-1.5">
+                         <Switch 
+                           checked={whatsappEnabled} 
+                           onCheckedChange={setWhatsappEnabled}
+                           className="scale-[0.5] data-[state=checked]:bg-green-500"
+                         />
                        </div>
                     </div>
 
@@ -488,7 +482,6 @@ export const AssessorIACard = () => {
                       </div>
                     )}
                   </div>
-                </div>
                 </div>
               </div>
 
