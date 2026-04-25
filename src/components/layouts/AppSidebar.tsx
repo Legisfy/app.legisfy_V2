@@ -87,13 +87,6 @@ const marketingItems = [
     tooltip: "Crie campanhas de envio de mensagens em massa para seus eleitores via WhatsApp.",
     permissionModule: null,
   },
-  {
-    title: "Workflow",
-    url: "/workflows",
-    icon: Workflow,
-    tooltip: "Crie automações visuais para conectar gatilhos e ações no seu gabinete.",
-    permissionModule: null,
-  },
 ];
 
 const restrictedItems = [

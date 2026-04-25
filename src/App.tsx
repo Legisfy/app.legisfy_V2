@@ -49,7 +49,6 @@ import DebugPoliticoLogin from "./pages/DebugPoliticoLogin";
 import SupabaseTest from "./pages/SupabaseTest";
 import ProjetosLei from "./pages/ProjetosLei";
 import Publicos from "./pages/Publicos";
-import Workflows from "./pages/Workflows";
 import { useAuthContext } from "./components/AuthProvider";
 import { toast } from "@/hooks/use-toast";
 import { useEffect, useState } from "react";
@@ -320,7 +319,7 @@ const App = () => (
                             <Route path="/assinatura" element={<Assinatura />} />
                             <Route path="/whatsapp" element={<WhatsAppAtendimento />} />
                             <Route path="/campanhas" element={<Campanhas />} />
-                            <Route path="/workflows" element={<Workflows />} />
+
                             <Route path="/publicos" element={<Publicos />} />
                             <Route path="/coleta" element={<Coleta />} />
                             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

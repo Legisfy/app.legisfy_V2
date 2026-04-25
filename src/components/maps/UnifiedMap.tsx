@@ -127,7 +127,7 @@ export const UnifiedMap: React.FC<UnifiedMapProps> = ({
             paint: {
                 'heatmap-weight': ['get', 'weight'],
                 'heatmap-intensity': ['interpolate', ['linear'], ['zoom'], 11, 1, 15, 3],
-                'heatmap-color': ['interpolate', ['linear'], ['heatmap-density'], 0, 'rgba(0,0,0,0)', 0.2, mode === 'eleitores' ? 'rgba(59, 130, 246, 0.2)' : 'rgba(139, 92, 246, 0.2)', 1, mode === 'eleitores' ? '#3b82f6' : '#ffffff'],
+                'heatmap-color': ['interpolate', ['linear'], ['heatmap-density'], 0, 'rgba(0,0,0,0)', 0.2, mode === 'eleitores' ? 'rgba(59, 130, 246, 0.5)' : 'rgba(139, 92, 246, 0.5)', 1, mode === 'eleitores' ? '#3b82f6' : '#ffffff'],
                 'heatmap-radius': ['interpolate', ['linear'], ['zoom'], 11, 20, 15, 30]
             }
         });
@@ -138,7 +138,7 @@ export const UnifiedMap: React.FC<UnifiedMapProps> = ({
             source: 'unified-data',
             filter: ['has', 'point_count'],
             paint: {
-                'circle-color': ['step', ['get', 'point_count'], mode === 'eleitores' ? 'rgba(59, 130, 246, 0.4)' : 'rgba(139, 92, 246, 0.4)', 50, 'rgba(236, 72, 153, 0.4)'],
+                'circle-color': ['step', ['get', 'point_count'], mode === 'eleitores' ? 'rgba(59, 130, 246, 0.8)' : 'rgba(139, 92, 246, 0.8)', 50, 'rgba(236, 72, 153, 0.8)'],
                 'circle-radius': ['step', ['get', 'point_count'], 25, 20, 35, 50, 45],
                 'circle-stroke-width': 2,
                 'circle-stroke-color': '#fff',
@@ -216,8 +216,27 @@ export const UnifiedMap: React.FC<UnifiedMapProps> = ({
         };
 
         const source = map.current.getSource('unified-data') as mapboxgl.GeoJSONSource;
-        if (source) source.setData(geojsonData as any);
-        else {
+        if (source) {
+            source.setData(geojsonData as any);
+            
+            // Update paint properties based on mode
+            const circleColor = mode === 'eleitores' ? '#3b82f6' : ['match', ['get', 'status'], 'atendida', '#22c55e', 'pendente', '#eab308', 'resolvida', '#22c55e', '#8b5cf6'];
+            const clusterColor = mode === 'eleitores' ? 'rgba(59, 130, 246, 0.8)' : 'rgba(139, 92, 246, 0.8)';
+            const heatmapColor = mode === 'eleitores' ? 'rgba(59, 130, 246, 0.2)' : 'rgba(139, 92, 246, 0.2)';
+            const heatmapFinalColor = mode === 'eleitores' ? '#3b82f6' : '#ffffff';
+
+            if (map.current.getLayer('unclustered-point')) {
+                map.current.setPaintProperty('unclustered-point', 'circle-color', circleColor);
+                map.current.setPaintProperty('unclustered-point', 'circle-opacity', 0.9);
+            }
+            if (map.current.getLayer('clusters')) {
+                map.current.setPaintProperty('clusters', 'circle-color', ['step', ['get', 'point_count'], clusterColor, 50, 'rgba(236, 72, 153, 0.8)']);
+                map.current.setPaintProperty('clusters', 'circle-opacity', 0.8);
+            }
+            if (map.current.getLayer('data-heat')) {
+                map.current.setPaintProperty('data-heat', 'heatmap-color', ['interpolate', ['linear'], ['heatmap-density'], 0, 'rgba(0,0,0,0)', 0.2, heatmapColor, 1, heatmapFinalColor]);
+            }
+        } else {
             map.current.addSource('unified-data', {
                 type: 'geojson',
                 data: geojsonData as any,
