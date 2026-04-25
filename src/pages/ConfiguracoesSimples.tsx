@@ -7,6 +7,7 @@ import { Briefcase, Settings } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AssessorIACard } from "@/components/configuracoes/AssessorIACard";
 import { DocumentTemplatesCard } from "@/components/configuracoes/DocumentTemplatesCard";
+import { CreditCard, Shield, User, Bell, Globe, Mail, Smartphone, Award, Camera, Check, Upload, Loader2, Sparkles, Building2 } from "lucide-react";
 
 export default function ConfiguracoesSimples() {
   const { cabinet } = useAuthContext();
@@ -60,14 +61,9 @@ export default function ConfiguracoesSimples() {
 
           <TabsContent value="geral" className="space-y-6 animate-in fade-in-50 duration-300">
             {/* Cards — grid de 2 colunas para Geral */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-6">
               <LogoUploadCard />
               <PremiacoesCard />
-            </div>
-            
-
-            {/* Meu Assessor IA */}
-            <div className="col-span-full">
               <AssessorIACard />
             </div>
 

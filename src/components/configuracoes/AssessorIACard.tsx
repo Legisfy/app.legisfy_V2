@@ -144,6 +144,23 @@ export const AssessorIACard = () => {
           setApiKey(config.whatsapp_api_key || "");
           setInstanceName(config.whatsapp_instance_name || "");
           setProvider(config.whatsapp_provider || "evolution");
+
+          // Se a integração já estiver habilitada, buscar o status real da conexão na VPS
+          if (config.whatsapp_enabled && config.whatsapp_instance_name) {
+             try {
+                const { data: statusData } = await supabase.functions.invoke('manage-whatsapp-instance', {
+                   body: { action: 'get-status', gabineteId: cabinet.cabinet_id }
+                });
+                
+                if (statusData && (statusData.status === 'open' || statusData.status === 'CONNECTED')) {
+                   setConnectionStatus('CONNECTED');
+                } else if (statusData && statusData.status) {
+                   setConnectionStatus(statusData.status);
+                }
+             } catch (err) {
+                console.error("Erro ao verificar status silenciosamente:", err);
+             }
+          }
         }
       } catch (error) {
         console.error("Erro ao carregar dados:", error);

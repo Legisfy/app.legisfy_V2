@@ -14,6 +14,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { getVoterCountFromFilters } from "@/utils/voterFilters";
+import { useActiveInstitution } from "@/hooks/useActiveInstitution";
 
 const DAYS_MAP: Record<number, string> = {
   0: "Dom",
@@ -28,39 +30,62 @@ const DAYS_MAP: Record<number, string> = {
 const Campanhas = () => {
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const { activeInstitution } = useActiveInstitution();
   const { campaigns, isLoading, updateCampaign, deleteCampaign } = useCampaigns();
 
-  // Fetch voter counts for each campaign based on their audience
   const { data: voterCounts } = useQuery({
-    queryKey: ["voter-counts", campaigns],
+    queryKey: ["voter-counts", campaigns, activeInstitution?.cabinet_id],
     queryFn: async () => {
-      const counts: Record<string, number> = {};
+      if (!activeInstitution?.cabinet_id) return {};
+      
+      const counts: Record<string, { count: number; name?: string }> = {};
+
+      // Pre-fetch all publics for this cabinet to avoid N+1 queries
+      const { data: publicsData } = await supabase
+        .from("publicos")
+        .select("*")
+        .eq("gabinete_id", activeInstitution.cabinet_id);
+
+      const publicsMap = (publicsData || []).reduce((acc, p) => {
+        acc[p.id] = p;
+        return acc;
+      }, {} as Record<string, any>);
 
       for (const campaign of campaigns || []) {
         let count = 0;
+        let name = undefined;
 
         if (campaign.audience_type === "publico") {
-          // Count all eleitores (público geral)
-          const { count: voterCount, error } = await supabase
-            .from("eleitores")
-            .select("id", { count: "exact", head: true });
-
-          if (!error) {
-            count = voterCount || 0;
+          if (campaign.public_id && publicsMap[campaign.public_id]) {
+            const publico = publicsMap[campaign.public_id];
+            name = publico.nome;
+            count = await getVoterCountFromFilters(supabase, activeInstitution.cabinet_id, publico.filtros);
+          } else {
+            // Fallback: if no specific public is selected, count all (though UI should prevent this)
+            const { count: totalCount } = await supabase
+              .from("eleitores")
+              .select("id", { count: "exact", head: true })
+              .eq("gabinete_id", activeInstitution.cabinet_id);
+            count = totalCount || 0;
           }
         } else if (campaign.audience_type === "tag" && campaign.tag_id) {
-          // Get tag name and count eleitores with that tag
-          const { data: tags } = await supabase
-            .from("eleitor_tags")
-            .select("name")
-            .eq("id", campaign.tag_id)
-            .single();
+          // Get tag name
+          let tagName = null;
+          const { data: tagCustom } = await supabase.from("gabinete_custom_tags").select("name").eq("id", campaign.tag_id).maybeSingle();
+          if (tagCustom) {
+            tagName = tagCustom.name;
+          } else {
+            const { data: tagEleitor } = await supabase.from("eleitor_tags").select("name").eq("id", campaign.tag_id).maybeSingle();
+            if (tagEleitor) tagName = tagEleitor.name;
+          }
 
-          if (tags) {
+          if (tagName) {
+            name = tagName;
             const { count: voterCount, error } = await supabase
               .from("eleitores")
               .select("id", { count: "exact", head: true })
-              .contains("tags", [tags.name]);
+              .eq("gabinete_id", activeInstitution.cabinet_id)
+              .contains("tags", [tagName]);
 
             if (!error) {
               count = voterCount || 0;
@@ -68,12 +93,12 @@ const Campanhas = () => {
           }
         }
 
-        counts[campaign.id] = count;
+        counts[campaign.id] = { count, name };
       }
 
       return counts;
     },
-    enabled: !!campaigns && campaigns.length > 0,
+    enabled: !!campaigns && campaigns.length > 0 && !!activeInstitution?.cabinet_id,
   });
 
   const handleToggleActive = async (id: string, currentStatus: boolean) => {
@@ -103,6 +128,16 @@ const Campanhas = () => {
             </p>
           </div>
 
+          <div className="flex items-center gap-3">
+            <Button
+              onClick={() => setCreateModalOpen(true)}
+              variant="success"
+              className="h-10 px-4 gap-2 rounded-xl font-bold text-xs uppercase tracking-wider shadow-lg shadow-emerald-500/10 hover:shadow-emerald-500/20 transition-all active:scale-95 animate-in fade-in zoom-in duration-200"
+            >
+              <Plus className="h-4 w-4" />
+              <span className="hidden sm:inline">Nova Campanha</span>
+            </Button>
+          </div>
         </div>
 
         <div className="flex gap-2 justify-end">
@@ -153,7 +188,10 @@ const Campanhas = () => {
         ) : viewMode === "grid" ? (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {campaigns.map((campaign) => {
-              const campaignVoterCount = voterCounts?.[campaign.id] || 0;
+              const campaignVoterCount = voterCounts?.[campaign.id]?.count || 0;
+              const tagName = voterCounts?.[campaign.id]?.name;
+              const audienceName = campaign.audience_type === "tag" ? (tagName || "Tag") : (campaign.public_name || "Todos os eleitores");
+              
               const totalMessages = campaign.messages_total || campaignVoterCount;
               const progress = totalMessages > 0
                 ? ((campaign.messages_sent || 0) / totalMessages) * 100
@@ -228,7 +266,7 @@ const Campanhas = () => {
                         <div className="flex items-center gap-2 text-sm">
                           <Users className="h-4 w-4 shrink-0 text-primary" />
                           <span className="font-semibold">
-                            {campaign.public_name || "Todos os eleitores"}
+                            {audienceName}
                           </span>
                         </div>
                         <div className="text-xs text-muted-foreground">
@@ -257,7 +295,10 @@ const Campanhas = () => {
         ) : (
           <div className="space-y-3">
             {campaigns.map((campaign) => {
-              const campaignVoterCount = voterCounts?.[campaign.id] || 0;
+              const campaignVoterCount = voterCounts?.[campaign.id]?.count || 0;
+              const tagName = voterCounts?.[campaign.id]?.name;
+              const audienceName = campaign.audience_type === "tag" ? (tagName || "Tag") : (campaign.public_name || "Todos os eleitores");
+
               const totalMessages = campaign.messages_total || campaignVoterCount;
               const progress = totalMessages > 0
                 ? ((campaign.messages_sent || 0) / totalMessages) * 100
@@ -301,10 +342,10 @@ const Campanhas = () => {
                           <div className="flex items-center gap-1.5 bg-muted/50 px-3 py-1.5 rounded-md">
                             <Users className="h-4 w-4 text-primary" />
                             <span className="font-semibold text-foreground">
-                              {campaign.public_name || "Todos os eleitores"}
+                              {audienceName}
                             </span>
                             <span className="text-muted-foreground">
-                              • {voterCounts?.["all"] || 0} eleitores
+                              • {campaignVoterCount} eleitores
                             </span>
                           </div>
                         </div>

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { AppLayout } from "@/components/layouts/AppLayout";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -7,15 +7,16 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, Users, Trash2, Edit, RefreshCw, Filter, X, Search, Grid3x3, List, Calendar, Tag, LayoutGrid, CheckCircle2, ListTree, MessageSquare, Flag, Circle, FileText } from "lucide-react";
 import * as LucideIcons from "lucide-react";
 import { CreateCustomTagModal } from "@/components/modals/CreateCustomTagModal";
+import { ModernSelect } from "@/components/ui/ModernSelect";
 import { CategoryMindMap } from "@/components/categorias/CategoryMindMap";
 import { supabase } from "@/integrations/supabase/client";
+import { getVoterCountFromFilters } from "@/utils/voterFilters";
 import { useActiveInstitution } from "@/hooks/useActiveInstitution";
 import { useAuthContext } from "@/components/AuthProvider";
 import { useConfirm } from "@/components/ui/confirm-dialog";
@@ -26,19 +27,26 @@ import { PermissionGuard } from "@/components/PermissionGuard";
 
 interface PublicoFiltros {
   sexo?: string;
-  neighborhood?: string;
+  neighborhood?: string | string[];
   minAge?: number;
   maxAge?: number;
   tags?: string[];
   isLeader?: boolean;
-  profession?: string;
+  profession?: string | string[];
+  city?: string | string[];
   birthdayMonth?: number;
+  birthdayType?: 'month' | 'today' | 'week' | 'current_month' | 'next_x_days';
+  birthdayDays?: number;
   demandasTotal?: number;
   demandasPeriod?: string;
   demandasType?: string;
+  demandasFilterType?: 'total' | 'atendida' | 'pendente_x_dias' | 'sem_registro_x_dias';
+  demandasDays?: number;
+  indicacoesFilterType?: 'atendida' | 'pendente_x_dias' | 'sem_registro_x_dias';
+  indicacoesDays?: number;
 }
 
-type FilterType = 'sexo' | 'neighborhood' | 'age' | 'isLeader' | 'profession' | 'birthday' | 'demandas';
+type FilterType = 'sexo' | 'neighborhood' | 'age' | 'isLeader' | 'profession' | 'birthday' | 'demandas' | 'indicacoes' | 'city';
 
 interface Publico {
   id: string;
@@ -77,6 +85,8 @@ const filterOptions = [
   { type: 'profession' as FilterType, label: 'Profissão' },
   { type: 'birthday' as FilterType, label: 'Aniversário' },
   { type: 'demandas' as FilterType, label: 'Demandas' },
+  { type: 'indicacoes' as FilterType, label: 'Indicações' },
+  { type: 'city' as FilterType, label: 'Cidade' },
 ];
 
 export default function Publicos() {
@@ -103,7 +113,7 @@ export default function Publicos() {
 
   // Filter values
   const [sexo, setSexo] = useState("todos");
-  const [neighborhood, setNeighborhood] = useState("todos");
+  const [selectedNeighborhoods, setSelectedNeighborhoods] = useState<string[]>([]);
   const [minAge, setMinAge] = useState("");
   const [maxAge, setMaxAge] = useState("");
   const [isLeader, setIsLeader] = useState("todos");
@@ -112,15 +122,25 @@ export default function Publicos() {
     const IconComponent = (LucideIcons as any)[iconName];
     return IconComponent ? <IconComponent className={className || "h-4 w-4"} style={style} /> : <Tag className={className || "h-4 w-4"} style={style} />;
   };
-  const [profession, setProfession] = useState("");
+  const [selectedProfessions, setSelectedProfessions] = useState<string[]>([]);
+  const [selectedCities, setSelectedCities] = useState<string[]>([]);
   const [birthdayMonth, setBirthdayMonth] = useState("");
+  const [birthdayType, setBirthdayType] = useState<string>("month");
+  const [birthdayDays, setBirthdayDays] = useState("7");
   const [demandasTotal, setDemandasTotal] = useState("");
   const [demandasPeriod, setDemandasPeriod] = useState("7");
   const [demandasType, setDemandasType] = useState("todos");
+  const [demandasFilterType, setDemandasFilterType] = useState<string>("total");
+  const [demandasDays, setDemandasDays] = useState("30");
+  const [indicacoesFilterType, setIndicacoesFilterType] = useState<string>("atendida");
+  const [indicacoesDays, setIndicacoesDays] = useState("30");
 
-  // Neighborhoods and professions list
+
+
+  // Neighborhoods, professions and cities list
   const [neighborhoods, setNeighborhoods] = useState<string[]>([]);
   const [professions, setProfessions] = useState<string[]>([]);
+  const [cities, setCities] = useState<string[]>([]);
 
   useEffect(() => {
     if (activeInstitution?.cabinet_id) {
@@ -131,6 +151,7 @@ export default function Publicos() {
       }
       fetchNeighborhoods();
       fetchProfessions();
+      fetchCities();
     }
   }, [activeInstitution?.cabinet_id, contentType]);
 
@@ -161,6 +182,21 @@ export default function Publicos() {
     if (data) {
       const uniqueProfessions = [...new Set(data.map(e => e.profession).filter(Boolean))] as string[];
       setProfessions(uniqueProfessions);
+    }
+  };
+
+  const fetchCities = async () => {
+    if (!activeInstitution?.cabinet_id) return;
+
+    const { data } = await supabase
+      .from('eleitores')
+      .select('cidade')
+      .eq('gabinete_id', activeInstitution.cabinet_id)
+      .not('cidade', 'is', null);
+
+    if (data) {
+      const uniqueCities = [...new Set(data.map(e => e.cidade).filter(Boolean))] as string[];
+      setCities(uniqueCities);
     }
   };
 
@@ -362,109 +398,7 @@ export default function Publicos() {
 
   const getVoterCount = async (filtros: any) => {
     if (!activeInstitution?.cabinet_id) return 0;
-
-    // Safety check for null/undefined filters
-    if (!filtros) return 0;
-
-    let query = supabase
-      .from('eleitores')
-      .select('id', { count: 'exact', head: true })
-      .eq('gabinete_id', activeInstitution.cabinet_id);
-
-    if (filtros.sexo) {
-      query = query.eq('sex', filtros.sexo);
-    }
-    if (filtros.neighborhood) {
-      query = query.eq('neighborhood', filtros.neighborhood);
-    }
-    if (filtros.isLeader !== undefined) {
-      query = query.eq('is_leader', filtros.isLeader);
-    }
-    if (filtros.profession) {
-      query = query.eq('profession', filtros.profession);
-    }
-    if (filtros.minAge || filtros.maxAge) {
-      const today = new Date();
-      if (filtros.maxAge) {
-        const minDate = new Date(today.getFullYear() - filtros.maxAge - 1, today.getMonth(), today.getDate());
-        query = query.gte('birth_date', minDate.toISOString().split('T')[0]);
-      }
-      if (filtros.minAge) {
-        const maxDate = new Date(today.getFullYear() - filtros.minAge, today.getMonth(), today.getDate());
-        query = query.lte('birth_date', maxDate.toISOString().split('T')[0]);
-      }
-    }
-    if (filtros.birthdayMonth) {
-      // Filter by birth month (1-12)
-      const { data: eleitores, error: birthError } = await supabase
-        .from('eleitores')
-        .select('id, birth_date')
-        .eq('gabinete_id', activeInstitution.cabinet_id);
-
-      if (birthError) throw birthError;
-
-      if (eleitores) {
-        const filteredByMonth = eleitores.filter(e => {
-          if (!e.birth_date) return false;
-          const birthMonth = new Date(e.birth_date).getMonth() + 1;
-          return birthMonth === Number(filtros.birthdayMonth);
-        });
-
-        const monthEleitorIds = filteredByMonth.map(e => e.id);
-        if (monthEleitorIds.length === 0) return 0;
-
-        query = query.in('id', monthEleitorIds);
-      }
-    }
-
-    if (filtros.demandasTotal || filtros.demandasPeriod || filtros.demandasType) {
-      let queryDemandas = supabase
-        .from('demandas')
-        .select('eleitor_id, status, created_at')
-        .eq('gabinete_id', activeInstitution.cabinet_id)
-        .not('eleitor_id', 'is', null);
-
-      if (filtros.demandasType && filtros.demandasType !== 'todos') {
-        const statusMap: Record<string, string> = {
-          'resolvida': 'resolvida',
-          'em_atendimento': 'em_atendimento',
-          'pendente': 'pendente'
-        };
-        queryDemandas = queryDemandas.eq('status', statusMap[filtros.demandasType]);
-      }
-
-      if (filtros.demandasPeriod && filtros.demandasPeriod !== 'todos') {
-        const days = parseInt(filtros.demandasPeriod);
-        const dateLimit = new Date();
-        dateLimit.setDate(dateLimit.getDate() - days);
-        queryDemandas = queryDemandas.gte('created_at', dateLimit.toISOString());
-      }
-
-      const { data: demandsData, error: demError } = await queryDemandas;
-
-      if (demError) throw demError;
-
-      if (demandsData) {
-        // Group by eleitor_id and count
-        const counts: Record<string, number> = {};
-        demandsData.forEach(d => {
-          if (d.eleitor_id) {
-            counts[d.eleitor_id] = (counts[d.eleitor_id] || 0) + 1;
-          }
-        });
-
-        const minTotal = filtros.demandasTotal ? parseInt(filtros.demandasTotal) : 0;
-        const validEleitorIds = Object.keys(counts).filter(id => counts[id] >= minTotal);
-
-        if (validEleitorIds.length === 0) return 0;
-
-        query = query.in('id', validEleitorIds);
-      }
-    }
-
-    const { count, error: finalError } = await query;
-    if (finalError) throw finalError;
-    return count || 0;
+    return getVoterCountFromFilters(supabase, activeInstitution.cabinet_id, filtros);
   };
 
   const resetForm = () => {
@@ -473,15 +407,22 @@ export default function Publicos() {
     setCor("#6366f1");
     setActiveFilters([]);
     setSexo("todos");
-    setNeighborhood("todos");
+    setSelectedNeighborhoods([]);
     setMinAge("");
     setMaxAge("");
     setIsLeader("todos");
-    setProfession("");
+    setSelectedProfessions([]);
+    setSelectedCities([]);
     setBirthdayMonth("");
+    setBirthdayType("month");
+    setBirthdayDays("7");
     setDemandasTotal("");
     setDemandasPeriod("7");
     setDemandasType("todos");
+    setDemandasFilterType("total");
+    setDemandasDays("30");
+    setIndicacoesFilterType("atendida");
+    setIndicacoesDays("30");
     setEditingPublico(null);
   };
 
@@ -494,13 +435,16 @@ export default function Publicos() {
   const removeFilter = (filterType: FilterType) => {
     setActiveFilters(activeFilters.filter(f => f !== filterType));
 
-    // Reset filter values
+    // Reset filter values completely to prevent them from being saved if the rule is removed
     switch (filterType) {
       case 'sexo':
         setSexo("todos");
         break;
       case 'neighborhood':
-        setNeighborhood("todos");
+        setSelectedNeighborhoods([]);
+        break;
+      case 'city':
+        setSelectedCities([]);
         break;
       case 'age':
         setMinAge("");
@@ -510,15 +454,23 @@ export default function Publicos() {
         setIsLeader("todos");
         break;
       case 'profession':
-        setProfession("");
+        setSelectedProfessions([]);
         break;
       case 'birthday':
         setBirthdayMonth("");
+        setBirthdayType("month");
+        setBirthdayDays("7");
         break;
       case 'demandas':
         setDemandasTotal("");
         setDemandasPeriod("7");
         setDemandasType("todos");
+        setDemandasFilterType("total");
+        setDemandasDays("30");
+        break;
+      case 'indicacoes':
+        setIndicacoesFilterType("atendida");
+        setIndicacoesDays("30");
         break;
     }
   };
@@ -531,6 +483,8 @@ export default function Publicos() {
     { type: 'profession' as FilterType, label: 'Profissão' },
     { type: 'birthday' as FilterType, label: 'Aniversário' },
     { type: 'demandas' as FilterType, label: 'Demandas' },
+    { type: 'indicacoes' as FilterType, label: 'Indicações' },
+    { type: 'city' as FilterType, label: 'Cidade' },
   ].filter(f => !activeFilters.includes(f.type));
 
   const handleOpenCreateModal = () => {
@@ -547,24 +501,51 @@ export default function Publicos() {
     // Detect active filters from existing publico
     const filters: FilterType[] = [];
     if (publico.filtros.sexo) filters.push('sexo');
-    if (publico.filtros.neighborhood) filters.push('neighborhood');
+    if (publico.filtros.neighborhood) {
+      if (Array.isArray(publico.filtros.neighborhood)) {
+        setSelectedNeighborhoods(publico.filtros.neighborhood);
+      } else {
+        setSelectedNeighborhoods([publico.filtros.neighborhood]);
+      }
+      filters.push('neighborhood');
+    }
+    if (publico.filtros.city) {
+      if (Array.isArray(publico.filtros.city)) {
+        setSelectedCities(publico.filtros.city);
+      } else {
+        setSelectedCities([publico.filtros.city]);
+      }
+      filters.push('city');
+    }
     if (publico.filtros.minAge || publico.filtros.maxAge) filters.push('age');
     if (publico.filtros.isLeader !== undefined) filters.push('isLeader');
-    if (publico.filtros.profession) filters.push('profession');
-    if (publico.filtros.birthdayMonth) filters.push('birthday');
-    if (publico.filtros.demandasTotal || publico.filtros.demandasPeriod) filters.push('demandas');
+    if (publico.filtros.profession) {
+      if (Array.isArray(publico.filtros.profession)) {
+        setSelectedProfessions(publico.filtros.profession);
+      } else {
+        setSelectedProfessions([publico.filtros.profession]);
+      }
+      filters.push('profession');
+    }
+    if (publico.filtros.birthdayMonth || publico.filtros.birthdayType) filters.push('birthday');
+    if (publico.filtros.demandasTotal || publico.filtros.demandasPeriod || publico.filtros.demandasFilterType) filters.push('demandas');
+    if (publico.filtros.indicacoesFilterType) filters.push('indicacoes');
 
     setActiveFilters(filters);
     setSexo(publico.filtros.sexo || "todos");
-    setNeighborhood(publico.filtros.neighborhood || "todos");
     setMinAge(publico.filtros.minAge?.toString() || "");
     setMaxAge(publico.filtros.maxAge?.toString() || "");
     setIsLeader(publico.filtros.isLeader !== undefined ? String(publico.filtros.isLeader) : "todos");
-    setProfession(publico.filtros.profession || "");
     setBirthdayMonth(publico.filtros.birthdayMonth?.toString() || "");
+    setBirthdayType(publico.filtros.birthdayType || (publico.filtros.birthdayMonth ? "month" : "today"));
+    setBirthdayDays(publico.filtros.birthdayDays?.toString() || "7");
     setDemandasTotal(publico.filtros.demandasTotal?.toString() || "");
     setDemandasPeriod(publico.filtros.demandasPeriod || "7");
     setDemandasType(publico.filtros.demandasType || "todos");
+    setDemandasFilterType(publico.filtros.demandasFilterType || "total");
+    setDemandasDays(publico.filtros.demandasDays?.toString() || "30");
+    setIndicacoesFilterType(publico.filtros.indicacoesFilterType || "atendida");
+    setIndicacoesDays(publico.filtros.indicacoesDays?.toString() || "30");
 
     setCreateModalOpen(true);
   };
@@ -577,18 +558,52 @@ export default function Publicos() {
 
     if (!activeInstitution?.cabinet_id || !user?.id) return;
 
-    const filtros = {
-      ...(sexo && sexo !== 'todos' && { sexo }),
-      ...(neighborhood && neighborhood !== 'todos' && { neighborhood }),
-      ...(minAge && { minAge: parseInt(minAge) }),
-      ...(maxAge && { maxAge: parseInt(maxAge) }),
-      ...(isLeader && isLeader !== 'todos' && { isLeader: isLeader === 'true' }),
-      ...(profession && { profession }),
-      ...(birthdayMonth && { birthdayMonth: parseInt(birthdayMonth) }),
-      ...(demandasTotal && { demandasTotal: parseInt(demandasTotal) }),
-      ...(demandasPeriod && { demandasPeriod }),
-      ...(demandasType && demandasType !== 'todos' && { demandasType }),
-    };
+    // Only save filters that are currently active in the UI
+    const filtros: any = {};
+    
+    if (activeFilters.includes('sexo') && sexo !== 'todos') {
+      filtros.sexo = sexo;
+    }
+    if (activeFilters.includes('neighborhood') && selectedNeighborhoods.length > 0) {
+      filtros.neighborhood = selectedNeighborhoods;
+    }
+    if (activeFilters.includes('city') && selectedCities.length > 0) {
+      filtros.city = selectedCities;
+    }
+    if (activeFilters.includes('age')) {
+      if (minAge) filtros.minAge = parseInt(minAge);
+      if (maxAge) filtros.maxAge = parseInt(maxAge);
+    }
+    if (activeFilters.includes('isLeader') && isLeader !== 'todos') {
+      filtros.isLeader = isLeader === 'true';
+    }
+    if (activeFilters.includes('profession') && selectedProfessions.length > 0) {
+      filtros.profession = selectedProfessions;
+    }
+    if (activeFilters.includes('birthday')) {
+      filtros.birthdayType = birthdayType;
+      if (birthdayType === 'month' && birthdayMonth) {
+        filtros.birthdayMonth = parseInt(birthdayMonth);
+      } else if (birthdayType === 'next_x_days' && birthdayDays) {
+        filtros.birthdayDays = parseInt(birthdayDays);
+      }
+    }
+    if (activeFilters.includes('demandas')) {
+      filtros.demandasFilterType = demandasFilterType;
+      if (demandasFilterType === 'total') {
+        if (demandasTotal) filtros.demandasTotal = parseInt(demandasTotal);
+        if (demandasPeriod) filtros.demandasPeriod = demandasPeriod;
+        if (demandasType !== 'todos') filtros.demandasType = demandasType;
+      } else if (demandasFilterType === 'pendente_x_dias' || demandasFilterType === 'sem_registro_x_dias') {
+        if (demandasDays) filtros.demandasDays = parseInt(demandasDays);
+      }
+    }
+    if (activeFilters.includes('indicacoes')) {
+      filtros.indicacoesFilterType = indicacoesFilterType;
+      if (indicacoesFilterType === 'pendente_x_dias' || indicacoesFilterType === 'sem_registro_x_dias') {
+        if (indicacoesDays) filtros.indicacoesDays = parseInt(indicacoesDays);
+      }
+    }
 
     try {
       if (editingPublico) {
@@ -731,34 +746,56 @@ export default function Publicos() {
 
   const getFilterDescription = (filtros: any) => {
     const parts = [];
-    if (filtros.sexo) parts.push(filtros.sexo === 'M' ? 'Homens' : 'Mulheres');
-    if (filtros.neighborhood) parts.push(`Bairro: ${filtros.neighborhood}`);
+    if (filtros.sexo) {
+      const label = filtros.sexo === 'masculino' || filtros.sexo === 'M' ? 'Homens' : 
+                   filtros.sexo === 'feminino' || filtros.sexo === 'F' ? 'Mulheres' : 
+                   filtros.sexo === 'nao_binario' ? 'Não Binário' : 
+                   filtros.sexo === 'todos' ? 'Todos' : filtros.sexo;
+      parts.push(label);
+    }
+    if (filtros.neighborhood) {
+      const value = Array.isArray(filtros.neighborhood) ? filtros.neighborhood.join(', ') : filtros.neighborhood;
+      parts.push(`Bairros: ${value}`);
+    }
     if (filtros.minAge) parts.push(`Idade mín: ${filtros.minAge}`);
     if (filtros.maxAge) parts.push(`Idade máx: ${filtros.maxAge}`);
     if (filtros.isLeader !== undefined) parts.push(filtros.isLeader ? 'Lideranças' : 'Não lideranças');
-    if (filtros.profession) parts.push(`Profissão: ${filtros.profession}`);
-    if (filtros.birthdayMonth) {
-      const meses = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
-      parts.push(`Aniversário: ${meses[filtros.birthdayMonth - 1]}`);
+    if (filtros.profession) {
+      const value = Array.isArray(filtros.profession) ? filtros.profession.join(', ') : filtros.profession;
+      parts.push(`Profissões: ${value}`);
     }
-    if (filtros.demandasTotal) parts.push(`${filtros.demandasTotal}+ demandas`);
-    if (filtros.demandasPeriod) {
-      const periodos: Record<string, string> = {
-        '7': 'últimos 7 dias',
-        '14': 'últimos 14 dias',
-        '30': 'último mês',
-        '90': 'últimos 3 meses',
-        '365': 'último ano'
-      };
-      parts.push(`Período: ${periodos[filtros.demandasPeriod]}`);
+    if (filtros.city) {
+      const value = Array.isArray(filtros.city) ? filtros.city.join(', ') : filtros.city;
+      parts.push(`Cidades: ${value}`);
     }
-    if (filtros.demandasType && filtros.demandasType !== 'todos') {
-      const tipos: Record<string, string> = {
-        'resolvida': 'Resolvidas',
-        'em_atendimento': 'Em Atendimento',
-        'pendente': 'Pendentes'
-      };
-      parts.push(`Tipo: ${tipos[filtros.demandasType]}`);
+    if (filtros.birthdayType || filtros.birthdayMonth) {
+      if (filtros.birthdayType === 'today') parts.push('Aniversário: Hoje');
+      else if (filtros.birthdayType === 'week') parts.push('Aniversário: Esta semana');
+      else if (filtros.birthdayType === 'current_month') parts.push('Aniversário: Este mês');
+      else if (filtros.birthdayType === 'next_x_days') parts.push(`Aniversário: Daqui a ${filtros.birthdayDays} dias`);
+      else if (filtros.birthdayMonth) {
+        const meses = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+        parts.push(`Aniversário: ${meses[filtros.birthdayMonth - 1]}`);
+      }
+    }
+    if (filtros.demandasFilterType) {
+      if (filtros.demandasFilterType === 'total') {
+        if (filtros.demandasTotal) parts.push(`${filtros.demandasTotal}+ demandas`);
+        if (filtros.demandasPeriod) {
+          const periodos: Record<string, string> = {
+            '7': 'últimos 7 dias', '14': 'últimos 14 dias', '30': 'último mês', '90': 'últimos 3 meses', '365': 'último ano'
+          };
+          parts.push(`Período: ${periodos[filtros.demandasPeriod]}`);
+        }
+      } else if (filtros.demandasFilterType === 'atendida') parts.push('Demandas atendidas');
+      else if (filtros.demandasFilterType === 'pendente_x_dias') parts.push(`Demanda pendente > ${filtros.demandasDays} dias`);
+      else if (filtros.demandasFilterType === 'sem_registro_x_dias') parts.push(`Sem demandas > ${filtros.demandasDays} dias`);
+    }
+
+    if (filtros.indicacoesFilterType) {
+      if (filtros.indicacoesFilterType === 'atendida') parts.push('Indicações atendidas');
+      else if (filtros.indicacoesFilterType === 'pendente_x_dias') parts.push(`Indicação pendente > ${filtros.indicacoesDays} dias`);
+      else if (filtros.indicacoesFilterType === 'sem_registro_x_dias') parts.push(`Sem indicações > ${filtros.indicacoesDays} dias`);
     }
     return parts.length > 0 ? parts.join(' • ') : 'Sem filtros';
   };
@@ -973,10 +1010,17 @@ export default function Publicos() {
                         </div>
                       </div>
                       {publico.descricao && (
-                        <CardDescription className="text-[10px] line-clamp-2 mt-2 leading-relaxed font-medium text-muted-foreground/60">
+                        <CardDescription className="text-[10px] line-clamp-1 mt-2 leading-relaxed font-medium text-muted-foreground/60">
                           {publico.descricao}
                         </CardDescription>
                       )}
+                      <div className="flex flex-wrap gap-1 mt-2">
+                        {getFilterDescription(publico.filtros).split(' • ').map((part, i) => (
+                          <Badge key={i} variant="secondary" className="text-[7px] h-3.5 px-1 font-bold uppercase tracking-tighter bg-muted/30 text-muted-foreground/60 border-none">
+                            {part}
+                          </Badge>
+                        ))}
+                      </div>
                     </CardHeader>
                     <CardContent className="space-y-4 pt-2">
                       <div className="flex items-end justify-between">
@@ -1357,19 +1401,14 @@ export default function Publicos() {
                   <div className="flex items-center justify-between border-b border-border/40 pb-2">
                     <Label className="text-[10px] font-black uppercase tracking-widest text-primary/60">REGRAS DE SEGMENTAÇÃO</Label>
                     {availableFilters.length > 0 && (
-                      <Select onValueChange={(value) => addFilter(value as FilterType)}>
-                        <SelectTrigger className="w-[180px] h-8 text-[10px] font-black uppercase tracking-widest rounded-xl border-primary/20 bg-primary/5 text-primary">
-                          <Plus className="h-3 w-3 mr-2" />
-                          <SelectValue placeholder="ADICIONAR REGRA" />
-                        </SelectTrigger>
-                        <SelectContent className="rounded-xl border-border/40 shadow-xl overflow-hidden">
-                          {availableFilters.map((filter) => (
-                            <SelectItem key={filter.type} value={filter.type} className="text-[10px] font-bold uppercase tracking-widest h-9">
-                              {filter.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <ModernSelect
+                        value=""
+                        onChange={(val: any) => addFilter(val as FilterType)}
+                        searchable={false}
+                        className="w-48 h-8"
+                        options={availableFilters.map(f => ({ label: f.label, value: f.type }))}
+                        placeholder="ADICIONAR REGRA"
+                      />
                     )}
                   </div>
 
@@ -1404,16 +1443,18 @@ export default function Publicos() {
 
                             {/* Filter Controls */}
                             {type === 'sexo' && (
-                              <Select value={sexo} onValueChange={setSexo}>
-                                <SelectTrigger className="h-8 rounded-lg text-[10px] font-bold border-border/40">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent className="rounded-xl border-border/40">
-                                  <SelectItem value="todos" className="text-[10px] font-bold uppercase">Todos</SelectItem>
-                                  <SelectItem value="M" className="text-[10px] font-bold uppercase">Masculino</SelectItem>
-                                  <SelectItem value="F" className="text-[10px] font-bold uppercase">Feminino</SelectItem>
-                                </SelectContent>
-                              </Select>
+                              <ModernSelect
+                                value={sexo}
+                                onChange={setSexo}
+                                searchable={false}
+                                options={[
+                                  { label: 'Todos', value: 'todos' },
+                                  { label: 'Masculino', value: 'masculino' },
+                                  { label: 'Feminino', value: 'feminino' },
+                                  { label: 'Não Binário', value: 'nao_binario' }
+                                ]}
+                                placeholder="Selecione o sexo"
+                              />
                             )}
 
                             {type === 'age' && (
@@ -1430,95 +1471,195 @@ export default function Publicos() {
                             )}
 
                             {type === 'neighborhood' && (
-                              <Select value={neighborhood} onValueChange={setNeighborhood}>
-                                <SelectTrigger className="h-8 rounded-lg text-[10px] font-bold border-border/40">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent className="rounded-xl border-border/40 max-h-[200px]">
-                                  <SelectItem value="todos" className="text-[10px] font-bold uppercase">Todos</SelectItem>
-                                  {neighborhoods.map(n => <SelectItem key={n} value={n} className="text-[10px] font-bold uppercase">{n}</SelectItem>)}
-                                </SelectContent>
-                              </Select>
+                              <ModernSelect
+                                options={neighborhoods}
+                                value={selectedNeighborhoods}
+                                onChange={setSelectedNeighborhoods}
+                                placeholder="Selecione os bairros"
+                                isMulti={true}
+                              />
+                            )}
+
+                            {type === 'city' && (
+                              <ModernSelect
+                                options={cities}
+                                value={selectedCities}
+                                onChange={setSelectedCities}
+                                placeholder="Selecione as cidades"
+                                isMulti={true}
+                              />
                             )}
 
                             {/* ... other filters same logic, just simplified UI ... */}
                             {/* For brevity and stability, I'll keep the logic consistent */}
                             {type === 'isLeader' && (
-                              <Select value={isLeader} onValueChange={setIsLeader}>
-                                <SelectTrigger className="h-8 rounded-lg text-[10px] font-bold border-border/40">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent className="rounded-xl border-border/40">
-                                  <SelectItem value="todos" className="text-[10px] font-bold uppercase">Todos</SelectItem>
-                                  <SelectItem value="true" className="text-[10px] font-bold uppercase">Lideranças</SelectItem>
-                                  <SelectItem value="false" className="text-[10px] font-bold uppercase">Eleitor Comum</SelectItem>
-                                </SelectContent>
-                              </Select>
+                              <ModernSelect
+                                value={isLeader}
+                                onChange={setIsLeader}
+                                searchable={false}
+                                options={[
+                                  { label: 'Todos', value: 'todos' },
+                                  { label: 'Lideranças', value: 'true' },
+                                  { label: 'Eleitor Comum', value: 'false' }
+                                ]}
+                                placeholder="Tipo de Eleitor"
+                              />
                             )}
 
                             {type === 'profession' && (
-                              <Select value={profession} onValueChange={setProfession}>
-                                <SelectTrigger className="h-8 rounded-lg text-[10px] font-bold border-border/40">
-                                  <SelectValue placeholder="Selecione a profissão" />
-                                </SelectTrigger>
-                                <SelectContent className="rounded-xl border-border/40 max-h-[200px]">
-                                  <SelectItem value="todos" className="text-[10px] font-bold uppercase">Todas</SelectItem>
-                                  {professions.map(p => <SelectItem key={p} value={p} className="text-[10px] font-bold uppercase">{p}</SelectItem>)}
-                                </SelectContent>
-                              </Select>
+                              <ModernSelect
+                                options={professions}
+                                value={selectedProfessions}
+                                onChange={setSelectedProfessions}
+                                placeholder="Selecione as profissões"
+                                isMulti={true}
+                              />
                             )}
 
                             {type === 'birthday' && (
-                              <Select value={birthdayMonth} onValueChange={setBirthdayMonth}>
-                                <SelectTrigger className="h-8 rounded-lg text-[10px] font-bold border-border/40">
-                                  <SelectValue placeholder="Mês de aniversário" />
-                                </SelectTrigger>
-                                <SelectContent className="rounded-xl border-border/40">
-                                  <SelectItem value="todos" className="text-[10px] font-bold uppercase">Qualquer Mês</SelectItem>
-                                  {['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'].map((mes, idx) => (
-                                    <SelectItem key={idx + 1} value={String(idx + 1)} className="text-[10px] font-bold uppercase">{mes}</SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
+                              <div className="space-y-3">
+                                <ModernSelect
+                                  value={birthdayType}
+                                  onChange={setBirthdayType}
+                                  searchable={false}
+                                  options={[
+                                    { label: 'Aniversariante do Dia', value: 'today' },
+                                    { label: 'Aniversariante da Semana', value: 'week' },
+                                    { label: 'Aniversariante do Mês', value: 'current_month' },
+                                    { label: 'Aniversário daqui a X dias', value: 'next_x_days' },
+                                    { label: 'Mês Específico', value: 'month' }
+                                  ]}
+                                  placeholder="Tipo de filtro"
+                                />
+
+                                {birthdayType === 'month' && (
+                                  <ModernSelect
+                                    value={birthdayMonth}
+                                    onChange={setBirthdayMonth}
+                                    placeholder="Escolha o mês"
+                                    options={[
+                                      { label: 'Qualquer Mês', value: 'todos' },
+                                      ...['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'].map((mes, idx) => ({
+                                        label: mes,
+                                        value: String(idx + 1)
+                                      }))
+                                    ]}
+                                  />
+                                )}
+
+                                {birthdayType === 'next_x_days' && (
+                                  <div className="space-y-1">
+                                    <Label className="text-[8px] font-black text-muted-foreground/40 uppercase">Dias para o aniversário</Label>
+                                    <Input 
+                                      type="number" 
+                                      value={birthdayDays} 
+                                      onChange={(e) => setBirthdayDays(e.target.value)} 
+                                      placeholder="Ex: 5"
+                                      className="h-8 rounded-lg text-xs" 
+                                    />
+                                  </div>
+                                )}
+                              </div>
                             )}
 
                             {type === 'demandas' && (
                               <div className="space-y-3">
-                                <div className="grid grid-cols-2 gap-2">
+                                <ModernSelect
+                                  value={demandasFilterType}
+                                  onChange={setDemandasFilterType}
+                                  searchable={false}
+                                  options={[
+                                    { label: 'Total de Demandas', value: 'total' },
+                                    { label: 'Demanda atendida', value: 'atendida' },
+                                    { label: 'Demanda pendente > X dias', value: 'pendente_x_dias' },
+                                    { label: 'Sem registrar demandas a > X dias', value: 'sem_registro_x_dias' }
+                                  ]}
+                                  placeholder="Tipo de filtro"
+                                />
+
+                                {demandasFilterType === 'total' && (
+                                  <>
+                                    <div className="grid grid-cols-2 gap-2">
+                                      <div className="space-y-1">
+                                        <Label className="text-[8px] font-black text-muted-foreground/40 uppercase">Mín. Atendimentos</Label>
+                                        <Input type="number" value={demandasTotal} onChange={(e) => setDemandasTotal(e.target.value)} className="h-8 rounded-lg text-xs" />
+                                      </div>
+                                      <div className="space-y-1">
+                                        <Label className="text-[8px] font-black text-muted-foreground/40 uppercase">Período</Label>
+                                        <ModernSelect
+                                          value={demandasPeriod}
+                                          onChange={setDemandasPeriod}
+                                          searchable={false}
+                                          options={[
+                                            { label: '7 dias', value: '7' },
+                                            { label: '14 dias', value: '14' },
+                                            { label: '30 dias', value: '30' },
+                                            { label: '3 meses', value: '90' },
+                                            { label: '1 ano', value: '365' }
+                                          ]}
+                                          placeholder="Período"
+                                        />
+                                      </div>
+                                    </div>
+                                    <div className="space-y-1">
+                                      <Label className="text-[8px] font-black text-muted-foreground/40 uppercase">Status do Atendimento</Label>
+                                      <ModernSelect
+                                        value={demandasType}
+                                        onChange={setDemandasType}
+                                        searchable={false}
+                                        options={[
+                                          { label: 'Todos os Status', value: 'todos' },
+                                          { label: 'Resolvidas', value: 'resolvida' },
+                                          { label: 'Em Andamento', value: 'em_atendimento' },
+                                          { label: 'Pendentes', value: 'pendente' }
+                                        ]}
+                                        placeholder="Status"
+                                      />
+                                    </div>
+                                  </>
+                                )}
+
+                                {(demandasFilterType === 'pendente_x_dias' || demandasFilterType === 'sem_registro_x_dias') && (
                                   <div className="space-y-1">
-                                    <Label className="text-[8px] font-black text-muted-foreground/40 uppercase">Mín. Atendimentos</Label>
-                                    <Input type="number" value={demandasTotal} onChange={(e) => setDemandasTotal(e.target.value)} className="h-8 rounded-lg text-xs" />
+                                    <Label className="text-[8px] font-black text-muted-foreground/40 uppercase">Quantidade de dias</Label>
+                                    <Input 
+                                      type="number" 
+                                      value={demandasDays} 
+                                      onChange={(e) => setDemandasDays(e.target.value)} 
+                                      placeholder="Ex: 30"
+                                      className="h-8 rounded-lg text-xs" 
+                                    />
                                   </div>
+                                )}
+                              </div>
+                            )}
+
+                            {type === 'indicacoes' && (
+                              <div className="space-y-3">
+                                <ModernSelect
+                                  value={indicacoesFilterType}
+                                  onChange={setIndicacoesFilterType}
+                                  searchable={false}
+                                  options={[
+                                    { label: 'Indicação atendida', value: 'atendida' },
+                                    { label: 'Indicação pendente > X dias', value: 'pendente_x_dias' },
+                                    { label: 'Sem registrar Indicação > X dias', value: 'sem_registro_x_dias' }
+                                  ]}
+                                  placeholder="Tipo de filtro"
+                                />
+
+                                {(indicacoesFilterType === 'pendente_x_dias' || indicacoesFilterType === 'sem_registro_x_dias') && (
                                   <div className="space-y-1">
-                                    <Label className="text-[8px] font-black text-muted-foreground/40 uppercase">Período</Label>
-                                    <Select value={demandasPeriod} onValueChange={setDemandasPeriod}>
-                                      <SelectTrigger className="h-8 rounded-lg text-[10px] font-bold border-border/40">
-                                        <SelectValue />
-                                      </SelectTrigger>
-                                      <SelectContent className="rounded-xl border-border/40">
-                                        <SelectItem value="7" className="text-[10px] font-bold uppercase">7 dias</SelectItem>
-                                        <SelectItem value="14" className="text-[10px] font-bold uppercase">14 dias</SelectItem>
-                                        <SelectItem value="30" className="text-[10px] font-bold uppercase">30 dias</SelectItem>
-                                        <SelectItem value="90" className="text-[10px] font-bold uppercase">3 meses</SelectItem>
-                                        <SelectItem value="365" className="text-[10px] font-bold uppercase">1 ano</SelectItem>
-                                      </SelectContent>
-                                    </Select>
+                                    <Label className="text-[8px] font-black text-muted-foreground/40 uppercase">Quantidade de dias</Label>
+                                    <Input 
+                                      type="number" 
+                                      value={indicacoesDays} 
+                                      onChange={(e) => setIndicacoesDays(e.target.value)} 
+                                      placeholder="Ex: 30"
+                                      className="h-8 rounded-lg text-xs" 
+                                    />
                                   </div>
-                                </div>
-                                <div className="space-y-1">
-                                  <Label className="text-[8px] font-black text-muted-foreground/40 uppercase">Status do Atendimento</Label>
-                                  <Select value={demandasType} onValueChange={setDemandasType}>
-                                    <SelectTrigger className="h-8 rounded-lg text-[10px] font-bold border-border/40">
-                                      <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent className="rounded-xl border-border/40">
-                                      <SelectItem value="todos" className="text-[10px] font-bold uppercase">Todos os Status</SelectItem>
-                                      <SelectItem value="resolvida" className="text-[10px] font-bold uppercase">Resolvidas</SelectItem>
-                                      <SelectItem value="em_atendimento" className="text-[10px] font-bold uppercase">Em Andamento</SelectItem>
-                                      <SelectItem value="pendente" className="text-[10px] font-bold uppercase">Pendentes</SelectItem>
-                                    </SelectContent>
-                                  </Select>
-                                </div>
+                                )}
                               </div>
                             )}
                           </div>

@@ -23,8 +23,8 @@ import {
   Lock,
   Award,
   Send,
-  Globe2,
   Target,
+  Workflow,
 } from "lucide-react";
 import {
   Sidebar,
@@ -66,6 +66,10 @@ const publicItems = [
   { title: "Mapa", url: "/mapa", icon: Map, permissionModule: null },
 ];
 
+const atendimentoItems = [
+  { title: "WhatsApp", url: "/whatsapp", icon: Send, permissionModule: null },
+];
+
 const aiItems: { title: string; url: string; icon: any }[] = [];
 
 const marketingItems = [
@@ -81,6 +85,13 @@ const marketingItems = [
     url: "/campanhas",
     icon: Megaphone,
     tooltip: "Crie campanhas de envio de mensagens em massa para seus eleitores via WhatsApp.",
+    permissionModule: null,
+  },
+  {
+    title: "Workflow",
+    url: "/workflows",
+    icon: Workflow,
+    tooltip: "Crie automações visuais para conectar gatilhos e ações no seu gabinete.",
     permissionModule: null,
   },
 ];
@@ -252,6 +263,35 @@ export function AppSidebar() {
                   if (!item.permissionModule) return true;
                   return hasPermission(item.permissionModule, 'read');
                 }).map((item) => (
+                  <SidebarMenuItem key={item.title} className="px-2 mb-0.5">
+                    <SidebarMenuButton asChild className="h-[26px] rounded-lg group transition-all">
+                      <NavLink
+                        to={item.url}
+                        className={getNavClass(isActive(item.url))}
+                        title={collapsed ? item.title : undefined}
+                      >
+                        <div className="flex items-center gap-2 px-2">
+                          <item.icon className={cn("h-3 w-3 transition-transform group-hover:scale-110", isActive(item.url) ? "text-primary" : "opacity-40")} />
+                          {!collapsed && <span className="text-[10px] font-bold tracking-tight font-inter">{item.title}</span>}
+                        </div>
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+          {/* Menu Atendimento */}
+          <SidebarGroup className="py-0.5">
+            <SidebarGroupLabel className={cn(
+              "text-[8px] font-black uppercase tracking-[0.2em] text-muted-foreground/50 dark:text-muted-foreground/30 mb-0.5 px-4 font-outfit",
+              collapsed && "sr-only"
+            )}>
+              Atendimento
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu className="space-y-0 text-[10px]">
+                {atendimentoItems.map((item) => (
                   <SidebarMenuItem key={item.title} className="px-2 mb-0.5">
                     <SidebarMenuButton asChild className="h-[26px] rounded-lg group transition-all">
                       <NavLink

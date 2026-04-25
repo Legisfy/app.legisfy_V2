@@ -227,27 +227,29 @@ ${texto}
 Retorne apenas o texto corrigido.
 `;
 
+  const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY') || apiKey;
+  
   try {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [
-          { role: 'system', content: 'Você é um revisor especializado em documentos oficiais brasileiros.' },
-          { role: 'user', content: prompt }
-        ],
-        max_tokens: 1000,
-        temperature: 0.1
+        contents: [{
+          role: 'user',
+          parts: [{ text: "Você é um revisor especializado em documentos oficiais brasileiros. " + prompt }]
+        }],
+        generationConfig: {
+          temperature: 0.1,
+          maxOutputTokens: 1000,
+        }
       }),
     });
 
     if (response.ok) {
       const data = await response.json();
-      return data.choices[0].message.content.trim();
+      return data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || texto;
     }
   } catch (error) {
     console.error('Error correcting text with AI:', error);
@@ -319,26 +321,28 @@ Gere um HTML completo, bem formatado, pronto para conversão em PDF.
 Use CSS inline para garantir boa formatação.
 `;
 
-  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+  const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY') || apiKey;
+
+  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`, {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${apiKey}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: 'gpt-4o-mini',
-      messages: [
-        { role: 'system', content: 'Você é um especialista em geração de documentos oficiais HTML.' },
-        { role: 'user', content: prompt }
-      ],
-      max_tokens: 2000,
-      temperature: 0.1
+      contents: [{
+        role: 'user',
+        parts: [{ text: "Você é um especialista em geração de documentos oficiais HTML. " + prompt }]
+      }],
+      generationConfig: {
+        temperature: 0.1,
+        maxOutputTokens: 2048,
+      }
     }),
   });
 
   if (response.ok) {
     const result = await response.json();
-    return result.choices[0].message.content;
+    return result.candidates?.[0]?.content?.parts?.[0]?.text || "";
   }
   
   // Fallback HTML

@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { AppLayout } from "@/components/layouts/AppLayout";
+import { ModernSelect } from "@/components/ui/ModernSelect";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -71,7 +72,7 @@ import { useActiveInstitution } from "@/hooks/useActiveInstitution";
 import { usePermissions } from "@/hooks/usePermissions";
 import { PermissionGuard } from "@/components/PermissionGuard";
 
-const sexos = ["Sexo", "MASCULINO", "FEMININO", "NAO_BINARIO"];
+const sexos = ["Sexo", "masculino", "feminino", "nao_binario"];
 const atendimentos = ["Status Demanda", "Atendidos", "Não Atendidos"];
 
 export default function Eleitores() {
@@ -143,7 +144,13 @@ export default function Eleitores() {
         const today = new Date();
 
         // Check sexo
-        if (filtros.sexo && eleitor.sex !== filtros.sexo) return false;
+        // Check sexo with normalization for legacy data
+        if (filtros.sexo) {
+          const normalizedPublicoSex = filtros.sexo === 'M' ? 'masculino' : 
+                                      filtros.sexo === 'F' ? 'feminino' : 
+                                      filtros.sexo;
+          if (eleitor.sex !== normalizedPublicoSex) return false;
+        }
 
         // Check neighborhood
         if (filtros.neighborhood && eleitor.neighborhood !== filtros.neighborhood) return false;
@@ -180,7 +187,7 @@ export default function Eleitores() {
       eleitor.neighborhood.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesBairro = selectedBairro === "Bairro" || eleitor.neighborhood === selectedBairro;
     const matchesTag = selectedTag === "Tag" || (eleitor.tags && eleitor.tags.includes(selectedTag));
-    const matchesSexo = selectedSexo === "Sexo"; // Always true for now
+    const matchesSexo = selectedSexo === "Sexo" || eleitor.sex === selectedSexo;
     const matchesAtendimento = selectedAtendimento === "Status Demanda"; // Always true for now
 
     return matchesSearch && matchesBairro && matchesTag && matchesSexo && matchesAtendimento;
@@ -430,70 +437,52 @@ export default function Eleitores() {
                           {/* Filter Selects ... (keeping the same implementation) */}
                           <div className="space-y-3">
                             <label className="text-sm font-black uppercase tracking-widest text-zinc-500">Bairro</label>
-                            <Select value={selectedBairro} onValueChange={setSelectedBairro}>
-                              <SelectTrigger className="h-12 rounded-xl bg-white dark:bg-zinc-900">
-                                <SelectValue placeholder="Selecione o bairro" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {bairros.map(bairro => (
-                                  <SelectItem key={bairro} value={bairro}>{bairro}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
+                            <ModernSelect
+                              value={selectedBairro}
+                              onChange={setSelectedBairro}
+                              options={bairros}
+                              placeholder="Selecione o bairro"
+                            />
                           </div>
                           {/* ... rest of selects (shortened for brevity in thought, but must be complete in tool call) */}
                           <div className="space-y-3">
                             <label className="text-sm font-black uppercase tracking-widest text-zinc-500">Tag / Classificação</label>
-                            <Select value={selectedTag} onValueChange={setSelectedTag}>
-                              <SelectTrigger className="h-12 rounded-xl bg-white dark:bg-zinc-900">
-                                <SelectValue placeholder="Selecione a tag" />
-                              </SelectTrigger>
-                              <SelectContent className="max-h-60">
-                                {tags.map(tag => (
-                                  <SelectItem key={tag} value={tag}>{tag}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
+                            <ModernSelect
+                              value={selectedTag}
+                              onChange={setSelectedTag}
+                              options={tags}
+                              placeholder="Selecione a tag"
+                            />
                           </div>
                           <div className="space-y-3">
                             <label className="text-sm font-black uppercase tracking-widest text-zinc-500">Gênero</label>
-                            <Select value={selectedSexo} onValueChange={setSelectedSexo}>
-                              <SelectTrigger className="h-12 rounded-xl bg-white dark:bg-zinc-900">
-                                <SelectValue placeholder="Selecione o gênero" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {sexos.map(sexo => (
-                                  <SelectItem key={sexo} value={sexo}>{sexo}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
+                            <ModernSelect
+                              value={selectedSexo}
+                              onChange={setSelectedSexo}
+                              options={sexos}
+                              placeholder="Selecione o gênero"
+                            />
                           </div>
                           <div className="space-y-3">
                             <label className="text-sm font-black uppercase tracking-widest text-zinc-500">Status de Demanda</label>
-                            <Select value={selectedAtendimento} onValueChange={setSelectedAtendimento}>
-                              <SelectTrigger className="h-12 rounded-xl bg-white dark:bg-zinc-900">
-                                <SelectValue placeholder="Selecione o status de demanda" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {atendimentos.map(atendimento => (
-                                  <SelectItem key={atendimento} value={atendimento}>{atendimento}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
+                            <ModernSelect
+                              value={selectedAtendimento}
+                              onChange={setSelectedAtendimento}
+                              options={atendimentos}
+                              placeholder="Selecione o status"
+                            />
                           </div>
                           <div className="space-y-3">
                             <label className="text-sm font-black uppercase tracking-widest text-zinc-500">Público Personalizado</label>
-                            <Select value={selectedPublico} onValueChange={setSelectedPublico}>
-                              <SelectTrigger className="h-12 rounded-xl bg-white dark:bg-zinc-900">
-                                <SelectValue placeholder="Selecione o público" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="Público">Todos os Públicos</SelectItem>
-                                {publicos.map(publico => (
-                                  <SelectItem key={publico.id} value={publico.nome}>{publico.nome}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
+                            <ModernSelect
+                              value={selectedPublico}
+                              onChange={setSelectedPublico}
+                              options={[
+                                { label: 'Todos os Públicos', value: 'Público' },
+                                ...publicos.map(p => ({ label: p.nome, value: p.nome }))
+                              ]}
+                              placeholder="Selecione o público"
+                            />
                           </div>
                         </div>
                       </div>

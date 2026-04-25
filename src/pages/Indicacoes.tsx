@@ -9,7 +9,6 @@ import { IndicacoesFilters } from "@/components/indicacoes/IndicacoesFilters";
 import { IndicacoesTable } from "@/components/indicacoes/IndicacoesTable";
 import { IndicacaoDrawer } from "@/components/indicacoes/IndicacaoDrawer";
 import { IndicacoesAnalises } from "@/components/indicacoes/IndicacoesAnalises";
-import { IndicacoesCamara } from "@/components/indicacoes/IndicacoesCamara";
 import { IndicacoesMap } from "@/components/indicacoes/IndicacoesMap";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -319,7 +318,6 @@ export default function Indicacoes() {
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="bg-transparent border-none">
                   <TabsList className="bg-transparent h-8 p-0 gap-1">
                     <TabsTrigger value="tabela" className="h-7 px-3 text-[10px] font-bold uppercase tracking-widest rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">Tabela</TabsTrigger>
-                    <TabsTrigger value="camara" className="h-7 px-3 text-[10px] font-bold uppercase tracking-widest rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">Câmara</TabsTrigger>
                     <TabsTrigger value="analises" className="h-7 px-3 text-[10px] font-bold uppercase tracking-widest rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">Análises</TabsTrigger>
                   </TabsList>
                 </Tabs>
@@ -369,12 +367,7 @@ export default function Indicacoes() {
               />
             </TabsContent>
 
-            <TabsContent value="camara" className="space-y-4">
-              <IndicacoesCamara
-                cityName={cabinet?.city_name}
-                politicianName={cabinet?.cabinet_name?.replace('Gabinete do ', '')}
-              />
-            </TabsContent>
+
 
             <TabsContent value="analises" className="space-y-4">
               <IndicacoesAnalises

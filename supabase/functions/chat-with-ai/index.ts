@@ -90,69 +90,65 @@ serve(async (req) => {
       ...(history || []).map(m => ({ role: m.role, content: m.content }))
     ];
 
-    // CALL OPENROUTER
-    const callOpenRouter = async (messages: any[]) => {
-      const payload = {
-        model: 'google/gemini-2.0-flash-lite-preview-02-05:free',
-        messages,
-        temperature: 0.7,
-        max_tokens: 1000
-      };
-
-      let attempt = 0;
-      const maxAttempts = 3;
-
-      while (attempt < maxAttempts) {
-        attempt++;
-        console.log(`OpenRouter attempt ${attempt} for model ${payload.model}`);
-
-        try {
-          const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${openAIApiKey}`,
-              'Content-Type': 'application/json',
-              'HTTP-Referer': 'https://app.legisfy.app.br',
-              'X-Title': 'Legisfy Assessor IA'
-            },
-            body: JSON.stringify(payload)
+    // CALL ANTHROPIC
+    const callAnthropic = async (messages: any[]) => {
+      const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY');
+      
+      const formattedMessages = [];
+      let systemInstruction = "";
+      
+      for (const m of messages) {
+        if (m.role === 'system') {
+          systemInstruction += m.content + "\n";
+        } else {
+          formattedMessages.push({
+            role: m.role === 'assistant' ? 'assistant' : 'user',
+            content: m.content
           });
-
-          if (!res.ok) {
-            const errorText = await res.text();
-            console.error(`OpenRouter error (status ${res.status}): ${errorText}`);
-
-            // If rate limited, wait and retry
-            if (res.status === 429 && attempt < maxAttempts) {
-              const waitTime = attempt * 2000;
-              console.log(`Rate limited. Waiting ${waitTime}ms before retry...`);
-              await new Promise((resolve) => setTimeout(resolve, waitTime));
-              continue;
-            }
-            throw new Error(`OpenRouter API error: ${res.status}`);
-          }
-
-          const json = await res.json();
-          if (json.error) {
-            console.error('OpenRouter JSON error:', json.error);
-            if (json.error.code === 429 && attempt < maxAttempts) {
-              const waitTime = attempt * 2000;
-              await new Promise((resolve) => setTimeout(resolve, waitTime));
-              continue;
-            }
-          }
-          return json;
-        } catch (err) {
-          console.error(`Fetch error on attempt ${attempt}:`, err);
-          if (attempt === maxAttempts) throw err;
-          await new Promise((resolve) => setTimeout(resolve, 1000));
         }
       }
 
-      return { error: { code: 429, message: 'Frequência de solicitações excedida após várias tentativas.' } };
+      console.log(`Anthropic call using Claude 3.5 Sonnet`);
+
+      try {
+        const res = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: {
+            'x-api-key': ANTHROPIC_API_KEY!,
+            'anthropic-version': '2023-06-01',
+            'content-type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: 'claude-3-5-sonnet-20240620',
+            max_tokens: 1024,
+            system: systemInstruction,
+            messages: formattedMessages,
+            temperature: 0.7,
+          })
+        });
+
+        if (!res.ok) {
+          const errorText = await res.text();
+          console.error(`Anthropic error (status ${res.status}): ${errorText}`);
+          throw new Error(`Anthropic API error: ${res.status}`);
+        }
+
+        const json = await res.json();
+        
+        return {
+          choices: [{
+            message: {
+              content: json.content?.[0]?.text || ""
+            }
+          }]
+        };
+      } catch (err) {
+        console.error(`Anthropic fetch error:`, err);
+        throw err;
+      }
     };
 
-    let aiResponse = await callOpenRouter(openaiMessages);
+    let aiResponse = await callAnthropic(openaiMessages);
     if (aiResponse && (aiResponse as any).error && (aiResponse as any).error.code === 429) {
       const rateLimitedMessage = "Estou com muitos acessos agora e o modelo gratuito está temporariamente indisponível. Tente novamente em alguns instantes.";
       await supabase.from('ia_messages').insert({ conversation_id, role: 'assistant', content: rateLimitedMessage });

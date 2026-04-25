@@ -112,44 +112,43 @@ Retorne um JSON estruturado:
 }
 `;
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY') || openaiApiKey;
+
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${openaiApiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [
-          {
-            role: 'system',
-            content: 'Você é um especialista em análise de documentos oficiais brasileiros com foco em identificação precisa de campos variáveis vs fixos.'
-          },
-          {
-            role: 'user',
-            content: analysisPrompt
-          }
-        ],
-        max_tokens: 3000,
-        temperature: 0.1
+        contents: [{
+          role: 'user',
+          parts: [{ text: "Você é um especialista em análise de documentos legislativos brasileiros. " + analysisPrompt }]
+        }],
+        generationConfig: {
+          temperature: 0.1,
+          maxOutputTokens: 2048,
+        }
       }),
     });
 
     if (!response.ok) {
-      const errorData = await response.text();
-      console.error('OpenAI API error:', errorData);
-      throw new Error(`OpenAI API error: ${response.status}`);
+      console.error('Gemini API error:', await response.text());
+      throw new Error('Failed to analyze template with Gemini');
     }
 
-    const analysisData = await response.json();
-    const analysisResult = analysisData.choices[0].message.content;
-
-    console.log('PDF analysis completed:', analysisResult);
-
-    // Tentar parsear o JSON da resposta
+    const aiResult = await response.json();
     let analysis;
+
     try {
-      analysis = JSON.parse(analysisResult);
+      const aiContent = aiResult.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
+      // Remover possíveis blocos de código markdown
+      let jsonStr = aiContent.trim();
+      if (jsonStr.startsWith('```json')) jsonStr = jsonStr.substring(7).trim();
+      else if (jsonStr.startsWith('```')) jsonStr = jsonStr.substring(3).trim();
+      if (jsonStr.endsWith('```')) jsonStr = jsonStr.substring(0, jsonStr.length - 3).trim();
+      jsonStr = jsonStr.trim();
+
+      analysis = JSON.parse(jsonStr);
     } catch (parseError) {
       console.error('Failed to parse analysis result:', parseError);
       // Fallback analysis baseada no tipo de documento

@@ -1,6 +1,7 @@
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import React, { lazy, Suspense } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ThemeProvider } from "next-themes";
 import { BrowserRouter, Routes, Route, Navigate, useParams } from "react-router-dom";
@@ -36,8 +37,8 @@ import AceitarConvite from "./pages/AceitarConvite";
 import AceitarConviteEquipe from "./pages/AceitarConviteEquipe";
 // LandingPage import removed
 import PublicPageEditor from "./pages/PublicPageEditor";
-import Publicos from "./pages/Publicos";
-import Campanhas from "./pages/Campanhas";
+const WhatsAppAtendimento = lazy(() => import("./pages/WhatsAppAtendimento"));
+const Campanhas = lazy(() => import("./pages/Campanhas"));
 import Coleta from "./pages/Coleta";
 import Assinatura from "./pages/Assinatura";
 import AssinaturaStripe from "./pages/AssinaturaStripe";
@@ -47,6 +48,8 @@ import DebugEleitores from "./pages/DebugEleitores";
 import DebugPoliticoLogin from "./pages/DebugPoliticoLogin";
 import SupabaseTest from "./pages/SupabaseTest";
 import ProjetosLei from "./pages/ProjetosLei";
+import Publicos from "./pages/Publicos";
+import Workflows from "./pages/Workflows";
 import { useAuthContext } from "./components/AuthProvider";
 import { toast } from "@/hooks/use-toast";
 import { useEffect, useState } from "react";
@@ -68,7 +71,7 @@ function PublicLandingPage() {
       }
 
       try {
-        const { data, error } = await supabase
+        const { data, error } = await (supabase as any)
           .from("public_pages")
           .select("*")
           .eq("slug", slug)
@@ -286,39 +289,44 @@ const App = () => (
                     {/* Protected routes - inside AuthGuard */}
                     <Route path="*" element={
                       <AuthGuardSimples>
-                        <Routes>
-                          <Route path="/dashboard" element={<Index />} />
-                          <Route path="/eleitores" element={<Eleitores />} />
-                          <Route path="/eleitores/:id/historico" element={<EleitorHistorico />} />
-                          <Route path="/indicacoes" element={<Indicacoes />} />
-                          <Route path="/projetos-lei" element={<ProjetosLei />} />
-                          <Route path="/demandas" element={<Demandas />} />
-                          <Route path="/mocoes-votos" element={<MocoesVotos />} />
-                          <Route path="/ideias" element={<Ideias />} />
-                          <Route path="/comunicacao" element={<Comunicacao />} />
-                          <Route path="/assessores" element={
-                            <RoleGuard allowedRoles={['politico', 'chefe_gabinete']}>
-                              <Assessores />
-                            </RoleGuard>
-                          } />
-                          <Route path="/agenda" element={<Agenda />} />
-                          <Route path="/configuracoes" element={<Configuracoes />} />
-                          <Route path="/assinatura" element={<Assinatura />} />
-                          <Route path="/assinatura-stripe" element={<AssinaturaStripe />} />
-                          <Route path="/perfil" element={<Perfil />} />
-                          <Route path="/duvidas" element={<DuvidasSugestoes />} />
-                          <Route path="/mapa" element={<Mapa />} />
-                          <Route path="/debug-eleitores" element={<DebugEleitores />} />
-                          <Route path="/debug-politico" element={<DebugPoliticoLogin />} />
-                          <Route path="/supabase-test" element={<SupabaseTest />} />
-                          <Route path="/builder" element={<PublicPageEditor />} />
-                          <Route path="/pagina-publica" element={<PublicPageEditor />} />
-                          <Route path="/publicos" element={<Publicos />} />
-                          <Route path="/campanhas" element={<Campanhas />} />
-                          <Route path="/coleta" element={<Coleta />} />
-                          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-                          <Route path="*" element={<NotFound />} />
-                        </Routes>
+                        <Suspense fallback={<div>Carregando...</div>}>
+                          <Routes>
+                            <Route path="/dashboard" element={<Index />} />
+                            <Route path="/eleitores" element={<Eleitores />} />
+                            <Route path="/eleitores/:id/historico" element={<EleitorHistorico />} />
+                            <Route path="/indicacoes" element={<Indicacoes />} />
+                            <Route path="/projetos-lei" element={<ProjetosLei />} />
+                            <Route path="/demandas" element={<Demandas />} />
+                            <Route path="/mocoes-votos" element={<MocoesVotos />} />
+                            <Route path="/ideias" element={<Ideias />} />
+                            <Route path="/comunicacao" element={<Comunicacao />} />
+                            <Route path="/assessores" element={
+                              <RoleGuard allowedRoles={['politico', 'chefe_gabinete']}>
+                                <Assessores />
+                              </RoleGuard>
+                            } />
+                            <Route path="/agenda" element={<Agenda />} />
+                            <Route path="/configuracoes" element={<Configuracoes />} />
+                            <Route path="/assinatura" element={<Assinatura />} />
+                            <Route path="/assinatura-stripe" element={<AssinaturaStripe />} />
+                            <Route path="/perfil" element={<Perfil />} />
+                            <Route path="/duvidas" element={<DuvidasSugestoes />} />
+                            <Route path="/mapa" element={<Mapa />} />
+                            <Route path="/debug-eleitores" element={<DebugEleitores />} />
+                            <Route path="/debug-politico" element={<DebugPoliticoLogin />} />
+                            <Route path="/supabase-test" element={<SupabaseTest />} />
+                            <Route path="/builder" element={<PublicPageEditor />} />
+                            <Route path="/pagina-publica" element={<PublicPageEditor />} />
+                            <Route path="/assinatura" element={<Assinatura />} />
+                            <Route path="/whatsapp" element={<WhatsAppAtendimento />} />
+                            <Route path="/campanhas" element={<Campanhas />} />
+                            <Route path="/workflows" element={<Workflows />} />
+                            <Route path="/publicos" element={<Publicos />} />
+                            <Route path="/coleta" element={<Coleta />} />
+                            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                            <Route path="*" element={<NotFound />} />
+                          </Routes>
+                        </Suspense>
                       </AuthGuardSimples>
                     } />
                   </Routes>

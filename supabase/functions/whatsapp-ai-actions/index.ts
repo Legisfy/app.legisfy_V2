@@ -22,7 +22,8 @@ interface ActionRequest {
   userName?: string
   gabineteId: string
   userRole: string
-  userText: string
+  userText?: string
+  audioBase64?: string
 }
 
 // Função para cadastrar eleitor
@@ -218,6 +219,155 @@ async function consultarAgenda(gabineteId: string): Promise<{ success: boolean, 
 }
 
 
+// Nova Função: Cadastrar Agenda (Eventos)
+async function cadastrarAgenda(params: any, gabineteId: string, userId: string): Promise<{ success: boolean, message: string, data?: any }> {
+  try {
+    const { titulo, descricao, data_inicio, data_fim, local } = params
+
+    if (!titulo || !data_inicio || !data_fim) {
+      return { success: false, message: 'Faltam dados principais: Título, Data/Hora Início e Fim são obrigatórios para agendar.' }
+    }
+
+    const isValidUUID = (str: string) => /^[0-9a-fA-F]{8}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{12}$/gi.test(str);
+    if (!isValidUUID(userId)) {
+        return { success: false, message: '❌ Apenas membros oficiais do Gabinete podem criar agendas do mandato através do WhatsApp.' }
+    }
+
+    const { data, error } = await supabase
+      .from('eventos')
+      .insert({
+        gabinete_id: gabineteId,
+        user_id: userId,
+        titulo: titulo.trim(),
+        descricao: descricao?.trim() || null,
+        data_inicio: data_inicio,
+        data_fim: data_fim,
+        local: local?.trim() || null,
+        tipo: 'Reunião',
+        cor: 'bg-blue-500' // Cor padrão UI
+      })
+      .select()
+      .single()
+
+    if (error) {
+      console.error('Erro ao cadastrar evento agenda:', error)
+      return { success: false, message: 'Erro SQL ao registrar agenda.' }
+    }
+
+    const fInicio = new Date(data_inicio).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+    const fFim = new Date(data_fim).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+
+    return {
+      success: true,
+      message: `📅 *Compromisso Agendado!*\n\n🚩 *${titulo}*\n🕒 ${fInicio} - ${fFim}\n📍 ${local || 'A definir'}\n\n_Já disponível no calendário central do painel._`,
+      data
+    }
+  } catch (error) {
+    console.error('Erro JS cadastro agenda:', error)
+    return { success: false, message: 'Erro interno ao processar a data do agendamento.' }
+  }
+}
+
+// Nova Função: Atualizar Agenda
+async function atualizarAgenda(params: any, gabineteId: string, userId: string): Promise<{ success: boolean, message: string }> {
+  try {
+    const { evento_id, titulo, descricao, data_inicio, data_fim, local } = params
+
+    if (!evento_id) {
+      return { success: false, message: 'Você precisa me informar o ID do evento para poder atualizar. Peça para buscar suas agendas primeiro se não souber o ID.' }
+    }
+
+    const isValidUUID = (str: string) => /^[0-9a-fA-F]{8}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{12}$/gi.test(str);
+    if (!isValidUUID(userId)) {
+        return { success: false, message: '❌ Apenas membros oficiais do Gabinete podem editar agendas.' }
+    }
+
+    const updates: any = {}
+    if (titulo) updates.titulo = titulo.trim()
+    if (descricao !== undefined) updates.descricao = descricao ? descricao.trim() : null
+    if (data_inicio) updates.data_inicio = data_inicio
+    if (data_fim) updates.data_fim = data_fim
+    if (local !== undefined) updates.local = local ? local.trim() : null
+
+    if (Object.keys(updates).length === 0) {
+       return { success: false, message: 'Entendi o evento, mas não encontrei mudanças de horário, data ou local na sua frase.' }
+    }
+
+    const { data, error } = await supabase
+      .from('eventos')
+      // usar like/ilike para o ID parcial que a IA manda
+      .update(updates)
+      .or(`id.eq.${evento_id},id.ilike.${evento_id}%`)
+      .eq('gabinete_id', gabineteId)
+      .select('titulo, data_inicio')
+      .limit(1)
+      .maybeSingle()
+
+    if (error || !data) {
+      console.error('Erro ao atualizar evento agenda:', error)
+      return { success: false, message: 'Agenda não encontrada com esse ID ou erro ao atualizar.' }
+    }
+
+    return {
+      success: true,
+      message: `✅ *Agenda Atualizada!*\n\n🚩 ${data.titulo} foi modiifcado com sucesso.`
+    }
+  } catch (error) {
+    console.error('Erro att agenda:', error)
+    return { success: false, message: 'Erro interno ao atualizar agenda.' }
+  }
+}
+
+// Nova Função: Buscar Agendas (Eventos)
+async function buscarAgendas(params: any, gabineteId: string): Promise<{ success: boolean, message: string }> {
+  try {
+    const { data_inicio_busca, data_fim_busca } = params
+
+    let query = supabase
+      .from('eventos')
+      .select('id, titulo, data_inicio, data_fim, local')
+      .eq('gabinete_id', gabineteId)
+      .order('data_inicio', { ascending: true })
+
+    if (data_inicio_busca) {
+        query = query.gte('data_inicio', data_inicio_busca)
+    } else {
+        const hojeUTC = new Date()
+        // Subtrai 3 horas para fuso e zera
+        hojeUTC.setUTCHours(0 - 3,0,0,0)
+        query = query.gte('data_inicio', hojeUTC.toISOString())
+    }
+
+    if (data_fim_busca) {
+        query = query.lte('data_fim', data_fim_busca)
+    }
+
+    query = query.limit(10)
+
+    const { data, error } = await query
+
+    if (error) {
+       console.error('Erro na consulta de eventos banco:', error)
+       return { success: false, message: 'Falha ao buscar agendas.' }
+    }
+
+    if (!data || data.length === 0) {
+      return { success: true, message: `📅 Nenhuma agenda cadastrada no sistema para este período.` }
+    }
+
+    let message = `📅 *Resultados da Agenda:*\n\n`
+    data.forEach((item) => {
+      const dInicio = new Date(item.data_inicio).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+      message += `🔹 *${item.titulo}*\n🕒 ${dInicio}\n📍 ${item.local || 'Não informado'}\n🔑 ID: ${item.id.substring(0, 8)}\n\n`
+    })
+
+    return { success: true, message }
+  } catch (error) {
+    console.error('Erro lista ag:', error)
+    return { success: false, message: 'Erro lógico ao buscar agendas.' }
+  }
+}
+
 // Função para consultar status
 async function consultarStatus(params: any, gabineteId: string): Promise<{ success: boolean, message: string }> {
   try {
@@ -289,27 +439,32 @@ async function listarItens(params: any, gabineteId: string): Promise<{ success: 
 
     let tableName = ''
     let emoji = ''
+    let columns = 'id, created_at'
 
     switch (tipo.toLowerCase()) {
       case 'eleitor':
       case 'eleitores':
         tableName = 'eleitores_whatsapp'
         emoji = '👥'
+        columns += ', nome, telefone, bairro'
         break
       case 'demanda':
       case 'demandas':
         tableName = 'demandas_whatsapp'
         emoji = '🎯'
+        columns += ', titulo, status'
         break
       case 'indicacao':
       case 'indicacoes':
         tableName = 'indicacoes_whatsapp'
         emoji = '📋'
+        columns += ', titulo, status'
         break
       case 'ideia':
       case 'ideias':
         tableName = 'ideias_whatsapp'
         emoji = '💡'
+        columns += ', titulo, status' // ideias pode nao ter status dependendo do projeto, mas via de regra aceita
         break
       default:
         return { success: false, message: 'Tipo inválido. Use: eleitores, demandas, indicacoes ou ideias.' }
@@ -317,7 +472,7 @@ async function listarItens(params: any, gabineteId: string): Promise<{ success: 
 
     const { data, error } = await supabase
       .from(tableName)
-      .select('id, titulo, nome, created_at, status')
+      .select(columns)
       .eq('gabinete_id', gabineteId)
       .order('created_at', { ascending: false })
       .limit(10)
@@ -334,10 +489,10 @@ async function listarItens(params: any, gabineteId: string): Promise<{ success: 
     let message = `${emoji} Seus ${tipo} (últimos 10):\n\n`
 
     data.forEach((item, index) => {
-      const nome = item.titulo || item.nome
+      const nomeOuTitulo = item.titulo || item.nome || 'Sem identificação'
       const dataFormatada = new Date(item.created_at).toLocaleDateString('pt-BR')
-      const status = item.status ? ` - ${item.status}` : ''
-      message += `${index + 1}. ${nome}${status}\n   📅 ${dataFormatada} | ID: ${item.id.substring(0, 8)}\n\n`
+      const extra = item.status ? ` - Status: ${item.status}` : (item.bairro ? ` - Bairro: ${item.bairro}` : '')
+      message += `${index + 1}. ${nomeOuTitulo}${extra}\n   📅 ${dataFormatada} | ID: ${item.id.toString().substring(0, 8)}\n\n`
     })
 
     return { success: true, message }
@@ -370,6 +525,11 @@ function obterAjuda(userRole: string): { success: boolean, message: string } {
     message += `💡 *Ideias:*\n`
     message += `• "cadastrar ideia [título] - [descrição]"\n`
     message += `• "minhas ideias"\n\n`
+    
+    message += `📅 *Agenda do Mandato:*\n`
+    message += `Você pode pedir em conversa natural, como:\n`
+    message += `• "Marca uma reunião amanhã às 14h com o Prefeito no Centro."\n`
+    message += `• "Quais as minhas agendas para amanhã?"\n\n`
   }
 
   message += `📊 *Consultas:*\n`
@@ -421,6 +581,11 @@ function parseManualCommand(userText: string): { action: string, parameters: any
         }
       }
     }
+  }
+
+  const saudacoes = ['oi', 'ola', 'olá', 'bom dia', 'boa tarde', 'boa noite', 'tudo bem', 'tudo bem?']
+  if (saudacoes.includes(lower)) {
+    return { action: 'chat', parameters: { text: '' } } // Força o fallback de boas vindas
   }
 
   if (lower.startsWith('cadastrar eleitor')) {
@@ -491,76 +656,105 @@ function parseManualCommand(userText: string): { action: string, parameters: any
 
 async function parseActionWithAI(userText: string, userRole: string, userName?: string): Promise<{ action: string, parameters: any }> {
   try {
+    const dataHoraAtual = new Date().toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" });
+
     const systemPrompt = `Você é um parser de comandos para o sistema Legisfy WhatsApp. 
 
 OBJETIVO: Analisar a mensagem do usuário e extrair a ação e parâmetros. Você é um Assessor IA proativo.
 
+> DATA E HORA DE AGORA: ${dataHoraAtual} (Use isso para fundamentar cálculos relativos como "amanhã", "hoje de tarde"). Assuma Fuso Horário de Brasília (BRT/BRST) UTC-03:00.
+
 AÇÕES VÁLIDAS:
+- cadastrar_agenda: {titulo, descricao?, data_inicio (formato ISO8601), data_fim (formato ISO8601), local?} // Para eventos do calendário. (Se o usuário der apenas um horário, deduza o fim como 1h após o início).
+- atualizar_agenda: {evento_id, titulo?, descricao?, data_inicio? (ISO8601), data_fim? (ISO8601), local?} // Reagendar ou editar evento existente. Exige o ID do evento (ex: "reagendar reunião id 12ab34cd para amanhã").
+- buscar_agenda: {data_inicio_busca? (ISO8601), data_fim_busca? (ISO8601)} // Para consultar agendas marcadas.
 - cadastrar_eleitor: {nome, telefone?, endereco?, tags?} (Use para: cadastrar, novo eleitor, registrar contato)
 - criar_indicacao: {titulo, descricao?} (Use para: nova indicação, criar lei, sugestão de projeto)
 - registrar_demanda: {titulo, descricao?, anexos?} (Use para: nova demanda, pedido de munícipe, reclamação, protocolo)
 - cadastrar_ideia: {titulo, descricao?, anexos?} (Use para: nova ideia, insights, sugestões internas)
 - consultar_status: {tipo, id}
-- listar_itens: {tipo}
+- listar_itens: {tipo} // (Use para listar, contar, ver, checar ou mostrar: eleitores, demandas, indicacoes, ideias. Ex: "quantas demandas", "mostrar meus eleitores")
 - consultar_email: {}
-- consultar_agenda: {}
+- consultar_agenda_google: {} // Legado: Para agenda do gmail. Prefira "buscar_agenda" se for agenda nativa.
 - obter_ajuda: {}
-- chat: {text} // **APENAS** se o usuário estiver apenas jogando conversa fora, fazendo uma pergunta que NÃO envolva as ações acima.
+- chat: {text} // **APENAS** se o usuário estiver conectando conversa, fazendo uma pergunta genérica, ou dizendo "Oi". NUNCA coloque um JSON dentro do 'text'. 
 
 INSTRUÇÕES CRÍTICAS:
-1. **PRIORIDADE MÁXIMA PARA AÇÕES**: Se o usuário demonstrar intenção de realizar qualquer uma das ações acima (ex: "queria registrar uma demanda", "cria aí um eleitor"), você **DEVE** retornar a ação correspondente, NÃO a ação "chat".
-2. Se faltar informações (como o título da demanda), use a ação "dados_faltantes" e peça a informação, ou se for algo simples, tente inferir.
-3. Se o usuário estiver apenas conversando (ex: "bom dia", "como você está?"), aí sim use a ação "chat".
-4. Na ação "chat", use o nome/cargo do usuário: ${userName || 'Usuário'} (${userRole}).
-5. Se o comando não for permitido para o cargo, retorne "sem_permissao".
-6. Responda **APENAS** com o JSON válido.
+1. PRIORIDADE MÁXIMA PARA AÇÕES ESPECÍFICAS DE CRUD E LISTAGENS. Retorne APENAS JSON válido, sem formato markdown.
+2. IMPORTANTE PARA AGENDA: Converta referências de data com base na DATA E HORA DE AGORA para um ISO8601 em UTC-03:00 (Ex: se hoje é 23/10 10:00 e o user diz amanhã as 15h, data_inicio="2024-10-24T15:00:00-03:00").
+3. IMPORTANTE PARA LISTAGENS: Se o usuário pedir quantidade, total, histórico ou lista de algo (demandas, indicações, ideias, eleitores) use 'listar_itens' e defina o parâmetro 'tipo'. NUNCA use 'chat' para esses casos.
 
 CARGO DO USUÁRIO: ${userRole}
 NOME DO USUÁRIO: ${userName || 'Usuário'}
+`
 
-Responda APENAS com o JSON válido, sem explicações.`
+    const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY')!;
+    
+    console.log(`Chamando Anthropic (Claude 3.5 Sonnet) para o usuário ${userName || 'Usuário'}...`)
 
-    console.log(`Chamando OpenRouter para o usuário ${userName || 'Usuário'}...`)
-
-    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${OPENAI_API_KEY}`,
-        'Content-Type': 'application/json',
-        'HTTP-Referer': 'https://app.legisfy.app.br',
-        'X-Title': 'Legisfy Assessor IA'
+        'x-api-key': ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01',
+        'content-type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'openai/gpt-4o-mini', // Mantendo gpt-4o-mini via OpenRouter para precisão no JSON
+        model: 'claude-3-5-sonnet-20241022',
+        max_tokens: 1024,
+        system: systemPrompt,
         messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userText }
+          { role: 'user', content: "MENSAGEM DO USUÁRIO: " + userText }
         ],
-        max_tokens: 500,
-        temperature: 0.7
+        temperature: 0,
       }),
     })
 
     if (!response.ok) {
       const errorText = await response.text()
-      console.error(`Erro na API OpenRouter (status ${response.status}): ${errorText}`)
-      throw new Error(`Erro na API OpenRouter: ${response.status}`)
+      console.error(`Erro na API Anthropic (status ${response.status}): ${errorText}`)
+      throw new Error(`Erro na API Anthropic: ${response.status}`)
     }
 
     const result = await response.json()
-    const content = result.choices[0]?.message?.content || '{}'
-    console.log('Resposta bruta do parser IA:', content)
+    const content = result.content?.[0]?.text || '{}'
+    console.log('Resposta bruta do parser IA (Anthropic):', content)
 
     try {
       // Remover possíveis blocos de código markdown se a IA os incluir
-      const jsonStr = content.replace(/```json\n?/, '').replace(/```\n?/, '').trim()
-      return JSON.parse(jsonStr)
+      let jsonStr = content.trim();
+      if (jsonStr.startsWith('```json')) jsonStr = jsonStr.substring(7);
+      else if (jsonStr.startsWith('```')) jsonStr = jsonStr.substring(3);
+      if (jsonStr.endsWith('```')) jsonStr = jsonStr.substring(0, jsonStr.length - 3);
+      jsonStr = jsonStr.trim();
+      
+      let parsed = JSON.parse(jsonStr)
+
+      const validActions = [
+        'cadastrar_agenda', 'atualizar_agenda', 'buscar_agenda', 'cadastrar_eleitor',
+        'criar_indicacao', 'registrar_demanda', 'cadastrar_ideia', 'consultar_status',
+        'listar_itens', 'consultar_email', 'consultar_agenda_google', 'obter_ajuda', 'chat'
+      ];
+
+      // Se a IA inventar uma ação, forçamos para chat e passamos o texto original (ou o que ela tentou dizer)
+      if (!parsed.action || !validActions.includes(parsed.action)) {
+         parsed = { action: 'chat', parameters: { text: parsed.text || parsed.message || parsed.resposta || content } }
+      }
+
+      // Se a IA mandou {"action": "chat", "text": "bla bla"} ao inves de parameters.text
+      if (parsed.action === 'chat' && (!parsed.parameters || typeof parsed.parameters.text !== 'string')) {
+         const fallbackText = parsed.text || parsed.message || parsed.resposta || content
+         parsed.parameters = { text: typeof fallbackText === 'string' ? fallbackText : JSON.stringify(fallbackText) }
+      }
+
+      return parsed
+
     } catch {
       return { action: 'chat', parameters: { text: content } }
     }
   } catch (error) {
     console.error('Erro no parser IA:', error)
-    return { action: 'chat', parameters: { text: "No momento tive um problema técnico, mas estou aqui para ajudar. Pode repetir?" } }
+    return { action: 'chat', parameters: { text: `No momento tive um problema técnico (${error.message}). Pode repetir?` } }
   }
 }
 
@@ -571,9 +765,44 @@ serve(async (req) => {
   }
 
   try {
-    const { action, parameters, userId, userName, gabineteId, userRole, userText }: ActionRequest & { userText: string } = await req.json()
+    let { action, parameters, userId, userName, gabineteId, userRole, userText, audioBase64 } = await req.json() as ActionRequest
 
-    let result: { success: boolean, message: string, data?: any }
+    // Processar áudio com Whisper se existir
+    if (audioBase64) {
+      console.log('🎙️ Áudio recebido, convertendo para texto com Whisper...');
+      try {
+        const byteCharacters = atob(audioBase64);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+          byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        const blob = new Blob([byteArray], { type: 'audio/ogg' });
+
+        const formData = new FormData();
+        formData.append('file', blob, 'audio.ogg');
+        formData.append('model', 'whisper-1');
+
+        const whisperRes = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${OPENAI_API_KEY}`
+          },
+          body: formData
+        });
+
+        if (whisperRes.ok) {
+          const transcription = await whisperRes.json();
+          userText = transcription.text;
+          console.log(`✅ Áudio transcrito: "${userText}"`);
+        } else {
+          console.error('❌ Erro no Whisper API:', await whisperRes.text());
+        }
+      } catch (err) {
+        console.error('❌ Erro local ao processar áudio para Whisper:', err);
+      }
+    }
+
 
     if (!action && userText) {
       const manual = parseManualCommand(userText)
@@ -607,105 +836,109 @@ serve(async (req) => {
       }
 
       // Executar ação parseada
-      switch (parsed.action) {
-        case 'cadastrar_eleitor':
-          result = await cadastrarEleitor(parsed.parameters, gabineteId)
-          break
-        case 'criar_indicacao':
-          result = await criarIndicacao(parsed.parameters, gabineteId)
-          break
-        case 'registrar_demanda':
-          result = await registrarDemanda(parsed.parameters, gabineteId)
-          break
-        case 'cadastrar_ideia':
-          result = await cadastrarIdeia(parsed.parameters, gabineteId)
-          break
-        case 'consultar_status':
-          result = await consultarStatus(parsed.parameters, gabineteId)
-          break
-        case 'listar_itens':
-          result = await listarItens(parsed.parameters, gabineteId)
-          break
-        case 'consultar_email':
-          result = await consultarEmails(gabineteId)
-          break
-        case 'consultar_agenda':
-          result = await consultarAgenda(gabineteId)
-          break
-        case 'obter_ajuda':
-          result = obterAjuda(userRole)
-          break
-        case 'chat': {
-          const aiText = typeof parsed.parameters?.text === 'string'
-            ? parsed.parameters.text
-            : undefined
+      action = parsed.action
+      parameters = parsed.parameters
+    }
+
+    let result: { success: boolean, message: string, data?: any }
+    
+    // Executar ação (agora unificada)
+    switch (action) {
+      case 'cadastrar_agenda':
+        result = await cadastrarAgenda(parameters, gabineteId, userId)
+        break
+      case 'atualizar_agenda':
+        result = await atualizarAgenda(parameters, gabineteId, userId)
+        break
+      case 'buscar_agenda':
+        result = await buscarAgendas(parameters, gabineteId)
+        break
+      case 'cadastrar_eleitor':
+        result = await cadastrarEleitor(parameters, gabineteId)
+        break
+      case 'criar_indicacao':
+        result = await criarIndicacao(parameters, gabineteId)
+        break
+      case 'registrar_demanda':
+        result = await registrarDemanda(parameters, gabineteId)
+        break
+      case 'cadastrar_ideia':
+        result = await cadastrarIdeia(parameters, gabineteId)
+        break
+      case 'consultar_status':
+        result = await consultarStatus(parameters, gabineteId)
+        break
+      case 'listar_itens':
+        result = await listarItens(parameters, gabineteId)
+        break
+      case 'consultar_email':
+        result = await consultarEmails(gabineteId)
+        break
+      case 'consultar_agenda_google':
+        result = await consultarAgenda(gabineteId)
+        break
+      case 'obter_ajuda':
+        result = obterAjuda(userRole)
+        break
+      case 'chat': {
+        const aiText = typeof parameters?.text === 'string' && parameters.text.trim().length > 0
+          ? parameters.text
+          : undefined
+        
+        // Buscar nome do assessor para o prompt
+        const { data: assessor } = await supabase
+          .from('meu_assessor_ia')
+          .select('nome, comportamento')
+          .eq('gabinete_id', gabineteId)
+          .maybeSingle();
           
-          // Buscar nome do assessor para o prompt
-          const { data: assessor } = await supabase
-            .from('meu_assessor_ia')
-            .select('nome, comportamento')
-            .eq('gabinete_id', gabineteId)
-            .maybeSingle();
+        const { data: gabineteData } = await supabase
+          .from('gabinetes')
+          .select('nome')
+          .eq('id', gabineteId)
+          .maybeSingle();
 
-          const fallback = `Sou o ${assessor?.nome || 'assistente IA'} do gabinete. Posso cadastrar eleitores, demandas, indicações e ideias. Como posso ajudar?`
-          result = { success: true, message: aiText || fallback }
-          break
-        }
-        default: {
-          result = {
-            success: true,
-            message: 'Não entendi muito bem. Se quiser ver exemplos, envie "ajuda".'
-          }
-        }
+        const assessorNome = assessor?.nome || 'Assistente IA';
+        let gabineteNome = gabineteData?.nome || 'Legislativo';
+
+        // Evitar redundância de "Gabinete Gabinete..."
+        const saudacaoGabinete = gabineteNome.toLowerCase().startsWith('gabinete') 
+          ? gabineteNome 
+          : `Gabinete ${gabineteNome}`;
+
+        const fallback = `Olá, sou ${assessorNome} Assessor IA do ${saudacaoGabinete}. Como posso te ajudar?`
+        result = { success: true, message: aiText || fallback }
+        break
       }
-
-      // Adicionar metadados do parser para o log de auditoria
-      ; (result as any).parsedAction = parsed.action
-        ; (result as any).parsedParameters = parsed.parameters
-    } else {
-      // Executar ação específica
-      switch (action) {
-        case 'cadastrar_eleitor':
-          result = await cadastrarEleitor(parameters, gabineteId)
-          break
-        case 'criar_indicacao':
-          result = await criarIndicacao(parameters, gabineteId)
-          break
-        case 'registrar_demanda':
-          result = await registrarDemanda(parameters, gabineteId)
-          break
-        case 'cadastrar_ideia':
-          result = await cadastrarIdeia(parameters, gabineteId)
-          break
-        case 'consultar_status':
-          result = await consultarStatus(parameters, gabineteId)
-          break
-        case 'listar_itens':
-          result = await listarItens(parameters, gabineteId)
-          break
-        case 'consultar_email':
-          result = await consultarEmails(gabineteId)
-          break
-        case 'consultar_agenda':
-          result = await consultarAgenda(gabineteId)
-          break
-        case 'obter_ajuda':
-          result = obterAjuda(userRole)
-          break
-        default:
-          result = { success: false, message: 'Ação não reconhecida.' }
+      default: {
+        result = {
+          success: false,
+          message: 'Ação não reconhecida. Se quiser ver exemplos, envie "ajuda".'
+        }
       }
     }
 
+    // Adicionar metadados do parser para o log de auditoria
+    ; (result as any).parsedAction = action
+    ; (result as any).parsedParameters = parameters
+
+    // Helper to check if string is UUID
+    const isValidUUID = (str: string) => {
+      const regexExp = /^[0-9a-fA-F]{8}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{12}$/gi;
+      return regexExp.test(str);
+    };
+
     // Log da ação se for bem-sucedida
     if (result.success && (action || (result as any).parsedAction) !== 'obter_ajuda') {
+      const isUUID = isValidUUID(userId);
       await supabase
         .from('audit_log_whatsapp')
         .insert({
-          usuario_id: userId,
+          usuario_id: isUUID ? userId : null,
           gabinete_id: gabineteId,
           acao: action || (result as any).parsedAction || 'acao_ia',
           payload_resumido: {
+            telefone_se_eleitor: !isUUID ? userId : undefined,
             action: action || (result as any).parsedAction,
             parameters: parameters || (result as any).parsedParameters || {},
             result: result.data

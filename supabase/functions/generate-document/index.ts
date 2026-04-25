@@ -217,32 +217,31 @@ A justificativa deve:
 Retorne apenas o texto da justificativa, sem introduções ou comentários.
 `;
 
+  const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY') || apiKey;
+  
   try {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [
-          {
-            role: 'system',
-            content: 'Você é um especialista em redação de documentos legislativos brasileiros, especializado em indicações e projetos para câmaras municipais.'
-          },
-          { role: 'user', content: prompt }
-        ],
-        max_tokens: 1500,
-        temperature: 0.2
+        contents: [{
+          role: 'user',
+          parts: [{ text: "Você é um especialista em redação de documentos legislativos brasileiros. " + prompt }]
+        }],
+        generationConfig: {
+          temperature: 0.2,
+          maxOutputTokens: 2048,
+        }
       }),
     });
 
     if (response.ok) {
       const data = await response.json();
-      const justificativaGerada = data.choices[0].message.content.trim();
-      console.log('Justificativa gerada pela IA:', justificativaGerada);
-      return justificativaGerada;
+      const justificativaGerada = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+      console.log('Justificativa gerada pela IA (Gemini):', justificativaGerada);
+      return justificativaGerada || justificativaOriginal;
     }
   } catch (error) {
     console.error('Error generating justification with AI:', error);
@@ -285,32 +284,31 @@ INSTRUÇÕES:
 Retorne apenas o texto corrigido, sem comentários adicionais.
 `;
 
+  const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY') || apiKey;
+  
   try {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [
-          {
-            role: 'system',
-            content: 'Você é um especialista em revisão e correção de documentos legislativos brasileiros.'
-          },
-          { role: 'user', content: prompt }
-        ],
-        max_tokens: 1500,
-        temperature: 0.2
+        contents: [{
+          role: 'user',
+          parts: [{ text: "Você é um especialista em revisão e correção de documentos legislativos brasileiros. " + prompt }]
+        }],
+        generationConfig: {
+          temperature: 0.2,
+          maxOutputTokens: 2048,
+        }
       }),
     });
 
     if (response.ok) {
       const data = await response.json();
-      const textoCorrigido = data.choices[0].message.content.trim();
-      console.log('Texto corrigido conforme solicitação:', textoCorrigido);
-      return textoCorrigido;
+      const textoCorrigido = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+      console.log('Texto corrigido conforme solicitação (Gemini):', textoCorrigido);
+      return textoCorrigido || textoOriginal;
     }
   } catch (error) {
     console.error('Error applying specific correction:', error);
@@ -334,27 +332,29 @@ ${texto}
 Retorne apenas o texto corrigido, sem comentários adicionais.
 `;
 
+  const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY') || apiKey;
+  
   try {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [
-          { role: 'system', content: 'Você é um revisor especializado em documentos oficiais brasileiros.' },
-          { role: 'user', content: prompt }
-        ],
-        max_tokens: 1000,
-        temperature: 0.1
+        contents: [{
+          role: 'user',
+          parts: [{ text: "Você é um revisor especializado em documentos oficiais brasileiros. " + prompt }]
+        }],
+        generationConfig: {
+          temperature: 0.1,
+          maxOutputTokens: 1000,
+        }
       }),
     });
 
     if (response.ok) {
       const data = await response.json();
-      return data.choices[0].message.content.trim();
+      return data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || texto;
     }
   } catch (error) {
     console.error('Error correcting text with AI:', error);
@@ -451,39 +451,43 @@ Retorne um JSON no formato:
 }
 `;
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY') || apiKey;
+
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [
-          {
-            role: 'system',
-            content: 'Você é um especialista em processamento de documentos PDF brasileiros. Analise cuidadosamente as informações do template e crie substituições precisas usando os valores reais fornecidos.'
-          },
-          {
-            role: 'user',
-            content: generationPrompt
-          }
-        ],
-        max_tokens: 2000,
-        temperature: 0.1
+        contents: [{
+          role: 'user',
+          parts: [{ text: "Você é um especialista em processamento de documentos PDF brasileiros. " + generationPrompt }]
+        }],
+        generationConfig: {
+          temperature: 0.1,
+          maxOutputTokens: 2048,
+        }
       }),
     });
 
     if (!response.ok) {
-      console.error('OpenAI API error:', await response.text());
-      throw new Error('Failed to generate document instructions with AI');
+      console.error('Gemini API error:', await response.text());
+      throw new Error('Failed to generate document instructions with Gemini');
     }
 
     const aiResult = await response.json();
     let generationResult;
 
     try {
-      generationResult = JSON.parse(aiResult.choices[0].message.content);
+      const aiContent = aiResult.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
+      // Remover possíveis blocos de código markdown
+      let jsonStr = aiContent.trim();
+      if (jsonStr.startsWith('```json')) jsonStr = jsonStr.substring(7);
+      else if (jsonStr.startsWith('```')) jsonStr = jsonStr.substring(3);
+      if (jsonStr.endsWith('```')) jsonStr = jsonStr.substring(0, jsonStr.length - 3);
+      jsonStr = jsonStr.trim();
+      
+      generationResult = JSON.parse(jsonStr);
     } catch (parseError) {
       console.error('Error parsing AI response:', parseError);
       console.log('Raw AI response:', aiResult.choices[0].message.content);

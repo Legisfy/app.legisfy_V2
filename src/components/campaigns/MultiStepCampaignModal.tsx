@@ -13,6 +13,7 @@ import { Calendar, Clock, ChevronLeft, ChevronRight, Users, MessageSquare, Eye, 
 import { useActiveInstitution } from "@/hooks/useActiveInstitution";
 import { useCampaigns } from "@/hooks/useCampaigns";
 import { WhatsAppPreview } from "./WhatsAppPreview";
+import { getVoterCountFromFilters } from "@/utils/voterFilters";
 import { cn } from "@/lib/utils";
 
 interface MultiStepCampaignModalProps {
@@ -99,23 +100,49 @@ export const MultiStepCampaignModal = ({ open, onOpenChange }: MultiStepCampaign
   });
 
   // Query to fetch tags from gabinete_custom_tags
+  // Query to fetch tags from gabinete_custom_tags and eleitor_tags
   const { data: tags } = useQuery({
-    queryKey: ["gabinete-custom-tags", activeInstitution?.cabinet_id],
+    queryKey: ["all-tags", activeInstitution?.cabinet_id],
     queryFn: async () => {
       if (!activeInstitution?.cabinet_id) return [];
       
-      const { data, error } = await supabase
-        .from("gabinete_custom_tags")
-        .select("*")
-        .eq("gabinete_id", activeInstitution.cabinet_id);
+      const [customTagsResponse, eleitorTagsResponse] = await Promise.all([
+        supabase
+          .from("gabinete_custom_tags")
+          .select("*")
+          .eq("gabinete_id", activeInstitution.cabinet_id),
+        supabase
+          .from("eleitor_tags")
+          .select("*")
+          .eq("gabinete_id", activeInstitution.cabinet_id),
+      ]);
       
-      if (error) throw error;
-      return data;
+      if (customTagsResponse.error) throw customTagsResponse.error;
+      if (eleitorTagsResponse.error) throw eleitorTagsResponse.error;
+      
+      const rawCustom = customTagsResponse.data || [];
+      const rawEleitor = eleitorTagsResponse.data || [];
+      
+      const allRawTags = [...rawCustom, ...rawEleitor];
+      
+      const groupedTagsMap: Record<string, any> = {};
+      
+      allRawTags.forEach(rawTag => {
+        const normalizedName = rawTag.name.trim().toUpperCase();
+        if (!groupedTagsMap[normalizedName]) {
+          groupedTagsMap[normalizedName] = {
+            id: rawTag.id,
+            name: rawTag.name,
+            color: rawTag.color || '#6366f1',
+          };
+        }
+      });
+      
+      return Object.values(groupedTagsMap);
     },
     enabled: !!activeInstitution?.cabinet_id,
   });
 
-  // Query to get voter count for selected public or tag
   const { data: voterCount } = useQuery({
     queryKey: ["voter-count", audienceType, publicId, tagId, activeInstitution?.cabinet_id],
     queryFn: async () => {
@@ -124,23 +151,36 @@ export const MultiStepCampaignModal = ({ open, onOpenChange }: MultiStepCampaign
       if (audienceType === "publico" && !publicId) return 0;
       if (audienceType === "tag" && !tagId) return 0;
       
-      let query = supabase
-        .from("eleitores")
-        .select("*", { count: "exact", head: true })
-        .eq("gabinete_id", activeInstitution.cabinet_id);
-      
       if (audienceType === "tag" && tagId) {
-        // Tags são armazenadas como nomes, não IDs
+        let query = supabase
+          .from("eleitores")
+          .select("id", { count: "exact", head: true })
+          .eq("gabinete_id", activeInstitution.cabinet_id);
+
         const selectedTag = tags?.find(t => t.id === tagId);
         if (selectedTag) {
           query = query.contains("tags", [selectedTag.name]);
         }
+        const { count, error } = await query;
+        if (error) throw error;
+        return count || 0;
+      }
+
+      if (audienceType === "publico" && publicId) {
+        // Fetch the public record to get its filters
+        const { data: publicoData, error: publicoError } = await supabase
+          .from("publicos")
+          .select("filtros")
+          .eq("id", publicId)
+          .single();
+
+        if (publicoError) throw publicoError;
+        if (!publicoData?.filtros) return 0;
+
+        return getVoterCountFromFilters(supabase, activeInstitution.cabinet_id, publicoData.filtros);
       }
       
-      const { count, error } = await query;
-      
-      if (error) throw error;
-      return count || 0;
+      return 0;
     },
     enabled: !!activeInstitution?.cabinet_id && ((audienceType === "publico" && !!publicId) || (audienceType === "tag" && !!tagId)),
   });
@@ -175,7 +215,11 @@ export const MultiStepCampaignModal = ({ open, onOpenChange }: MultiStepCampaign
     };
 
     if (frequency === "once" && scheduledDate && scheduledTime) {
-      campaignData.scheduled_date = `${scheduledDate}T${scheduledTime}:00`;
+      // Create date object in current timezone by parsing local
+      const [year, month, day] = scheduledDate.split('-').map(Number);
+      const [hours, minutes] = scheduledTime.split(':').map(Number);
+      const localDate = new Date(year, month - 1, day, hours, minutes);
+      campaignData.scheduled_date = localDate.toISOString();
     } else if (frequency === "recurring") {
       campaignData.recurring_days = recurringDays;
       campaignData.recurring_day_times = dayTimes;
@@ -511,15 +555,27 @@ export const MultiStepCampaignModal = ({ open, onOpenChange }: MultiStepCampaign
             <div className="space-y-2">
               <Label>Variáveis Disponíveis</Label>
               <div className="flex flex-wrap gap-2">
-                {['nome', 'bairro', 'demanda', 'indicacao'].map((variable) => (
+                {[
+                  { id: 'nome', label: 'Nome Completo' },
+                  { id: 'primeiro_nome', label: 'Primeiro Nome' },
+                  { id: 'bairro', label: 'Bairro' },
+                  { id: 'cidade', label: 'Cidade' },
+                  { id: 'idade', label: 'Idade' },
+                  { id: 'sexo', label: 'Sexo' },
+                  { id: 'profissao', label: 'Profissão' },
+                  { id: 'total_demandas', label: 'Total de Demandas' },
+                  { id: 'total_indicacoes', label: 'Total de Indicações' },
+                  { id: 'demanda', label: 'Última Demanda' },
+                  { id: 'indicacao', label: 'Última Indicação' },
+                ].map((variable) => (
                   <Button
-                    key={variable}
+                    key={variable.id}
                     type="button"
                     variant="outline"
                     size="sm"
-                    onClick={() => insertVariable(variable)}
+                    onClick={() => insertVariable(variable.id)}
                   >
-                    {`{{${variable}}}`}
+                    {variable.label}
                   </Button>
                 ))}
               </div>
